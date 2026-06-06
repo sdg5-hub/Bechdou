@@ -3,246 +3,295 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bechdou | Fashion Resale, Reframed</title>
+    <title>Bechdou | MVP Marketplace</title>
     <meta
       name="description"
-      content="Bechdou is a fashion resale concept site for discovering brand new and lightly worn pieces with an editorial, community-first feel."
+      content="A clean Bechdou MVP marketplace where users can create accounts, upload listings, approve listings, browse approved pieces, and request items."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=4" />
   </head>
   <body>
-    <div class="page-shell">
+    <div class="site-shell">
       <header class="topbar">
-        <a class="brand" href="#hero" aria-label="Bechdou home">
+        <a class="brand" href="#browse-view" aria-label="Bechdou marketplace">
           <span class="brand-mark">B</span>
-          <span class="brand-copy">
+          <span>
             <strong>Bechdou</strong>
-            <span>Pakistan's fashion resale playground</span>
+            <small>Curated resale</small>
           </span>
         </a>
 
-        <nav class="topnav" aria-label="Primary">
-          <a href="#drops">New Drop</a>
-          <a href="#closet">Closets</a>
-          <a href="#sell">Sell</a>
-          <a href="#app">App</a>
+        <nav class="topnav" aria-label="Marketplace views">
+          <button class="nav-button is-active" type="button" data-view-target="browse">
+            Browse
+          </button>
+          <button class="nav-button" type="button" data-view-target="sell">
+            Sell
+          </button>
+          <button class="nav-button" type="button" data-view-target="admin">
+            Admin
+          </button>
         </nav>
 
-        <a class="pill-button" href="#sell">Start selling</a>
+        <div class="top-actions">
+          <span class="ops-pill" id="top-status">0 pending</span>
+          <button class="plain-button" type="button" id="reset-demo">Reset</button>
+        </div>
       </header>
 
-      <main>
-        <section class="hero" id="hero">
-          <div class="hero-copy">
-            <p class="eyebrow">Resale, but make it magnetic</p>
-            <h1>Shop the closet drop everyone screenshots first.</h1>
-            <p class="hero-text">
-              Bechdou is built for the scroll-stoppers: brand new and lightly
-              worn pieces, curated closets, quick flips, and a fashion resale
-              community that feels more like culture than classifieds.
+      <main class="market-shell">
+        <aside class="brand-rail" aria-label="Bechdou account and status">
+          <section class="brand-panel">
+            <p class="script-label">Bechdou.pk</p>
+            <h1>Shop &amp; sell closet drops.</h1>
+            <p class="brand-note">
+              Approved listings, buyer requests, and manual ops in one polished
+              first version.
             </p>
-
-            <div class="hero-actions">
-              <a class="primary-button" href="#drops">Browse today's drop</a>
-              <button class="ghost-button" type="button" data-scroll="#app">
-                See the app vibe
-              </button>
-            </div>
-
-            <dl class="hero-stats" aria-label="Highlights">
+            <div class="stripe-swatch" aria-hidden="true"></div>
+            <img
+              class="brand-image"
+              src="./assets/bechdou-editorial-collage.png"
+              alt="Editorial fashion resale flat lay in cream, powder blue, and merlot"
+            />
+            <div class="signal-list" aria-label="Marketplace signals">
               <div>
-                <dt>1.8K+</dt>
-                <dd>early followers</dd>
+                <strong id="approved-count">0</strong>
+                <span>approved pieces</span>
               </div>
               <div>
-                <dt>24h</dt>
-                <dd>average best drops move fast</dd>
+                <strong id="request-count">0</strong>
+                <span>buyer requests</span>
               </div>
               <div>
-                <dt>IRL feel</dt>
-                <dd>styling, stories, and seller energy</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div class="hero-stage" aria-hidden="true">
-            <article class="floating-card card-plum">
-              <span class="tag">Trending</span>
-              <h2>Quiet luxury basics</h2>
-              <p>Sharp knits, rare denim, and pieces that look expensive twice.</p>
-            </article>
-
-            <article class="floating-card card-cream">
-              <span class="tag">Seller Guide</span>
-              <h2>List it in minutes</h2>
-              <p>Snap, price, upload, and let your closet start earning.</p>
-            </article>
-
-            <div class="phone-mockup">
-              <div class="phone-header">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <div class="phone-grid">
-                <div class="grid-tile tile-story">Shop &amp; Sell</div>
-                <div class="grid-tile tile-photo tile-tall"></div>
-                <div class="grid-tile tile-photo tile-denim"></div>
-                <div class="grid-tile tile-guide">Seller Guide</div>
-                <div class="grid-tile tile-photo tile-red"></div>
-                <div class="grid-tile tile-photo tile-blue"></div>
+                <strong id="account-count">0</strong>
+                <span>accounts</span>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="ticker" aria-label="Bechdou highlights">
-          <div class="ticker-track">
-            <span>Brand new & lightly worn pieces</span>
-            <span>Closet drops that feel editorial</span>
-            <span>Pakistan's first fashion resale platform</span>
-            <span>Styled by the community, not just the algorithm</span>
-          </div>
-        </section>
-
-        <section class="section" id="drops">
-          <div class="section-heading">
-            <p class="eyebrow">Featured drop</p>
-            <h2>Made to feel like your favorite resale feed, only warmer.</h2>
-          </div>
-
-          <div class="listing-grid">
-            <article class="listing-card">
-              <div class="listing-visual visual-olive"></div>
-              <div class="listing-copy">
-                <div>
-                  <h3>Forest crewneck</h3>
-                  <p>Soft vintage fit with the "borrowed from someone cool" energy.</p>
-                </div>
-                <strong>Rs 2,800</strong>
-              </div>
-            </article>
-
-            <article class="listing-card">
-              <div class="listing-visual visual-cream"></div>
-              <div class="listing-copy">
-                <div>
-                  <h3>Floral tie blouse</h3>
-                  <p>One of those effortless tops that fixes the whole outfit.</p>
-                </div>
-                <strong>Rs 1,950</strong>
-              </div>
-            </article>
-
-            <article class="listing-card">
-              <div class="listing-visual visual-burgundy"></div>
-              <div class="listing-copy">
-                <div>
-                  <h3>Asymmetric knit</h3>
-                  <p>Statement neckline, subtle drama, genuinely hard to ignore.</p>
-                </div>
-                <strong>Rs 3,400</strong>
-              </div>
-            </article>
-
-            <article class="listing-card">
-              <div class="listing-visual visual-denim"></div>
-              <div class="listing-copy">
-                <div>
-                  <h3>Cropped denim jacket</h3>
-                  <p>Structured shape with that perfect slightly-boxy drop.</p>
-                </div>
-                <strong>Rs 4,200</strong>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="split-panel" id="closet">
-          <div class="panel editorial-panel">
-            <p class="eyebrow">Community first</p>
-            <h2>Closets with personality. Drops with context. Styling with a pulse.</h2>
-            <p>
-              The best part of Bechdou is the human layer. Seller notes, styling
-              clips, how-to-buy guides, and curated wardrobes turn every listing
-              into something that feels discovered instead of dumped online.
-            </p>
-            <ul class="feature-list">
-              <li>Closet pages that feel like mini editorials</li>
-              <li>Shopping guides for first-time buyers and sellers</li>
-              <li>Drop culture that rewards taste, not just volume</li>
-            </ul>
-          </div>
-
-          <div class="panel metric-panel" id="sell">
-            <p class="eyebrow">Sell smarter</p>
-            <h2>Post once. Let the fit pics and clean layout do the convincing.</h2>
-            <div class="metric-stack">
-              <article>
-                <span>01</span>
-                <h3>Snap your piece</h3>
-                <p>Phone-first listing flow designed around fashion, not forms.</p>
-              </article>
-              <article>
-                <span>02</span>
-                <h3>Price with confidence</h3>
-                <p>Guide rails for retail value, wear level, and resale range.</p>
-              </article>
-              <article>
-                <span>03</span>
-                <h3>Ship the drop</h3>
-                <p>Get paid while your closet clears out and your next look funds itself.</p>
-              </article>
+          <section class="side-panel">
+            <div class="section-title">
+              <p class="eyebrow">Account</p>
+              <h2>Create profile</h2>
             </div>
-          </div>
-        </section>
+            <form class="stacked-form" id="account-form">
+              <label>
+                Full name
+                <input id="account-name" name="name" type="text" autocomplete="name" required />
+              </label>
+              <label>
+                Email
+                <input id="account-email" name="email" type="email" autocomplete="email" required />
+              </label>
+              <label>
+                Role
+                <select id="account-role" name="role">
+                  <option value="buyer">Buyer</option>
+                  <option value="seller">Seller</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+              <button class="button primary" type="submit">Sign up</button>
+            </form>
+            <div class="account-summary" id="current-account" hidden></div>
+          </section>
 
-        <section class="section app-section" id="app">
-          <div class="section-heading">
-            <p class="eyebrow">App energy</p>
-            <h2>Dark-mode marketplace shell, vivid product moments, zero boring screens.</h2>
-          </div>
+          <section class="side-panel compact">
+            <p class="eyebrow">Ops</p>
+            <div class="ops-stack" id="ops-summary"></div>
+          </section>
+        </aside>
 
-          <div class="app-showcase">
-            <div class="app-card app-card-large">
-              <p class="card-label">Home feed</p>
-              <h3>Scroll a resale universe, not a spreadsheet.</h3>
-              <p>
-                Product cards, seller stories, and colorful drop banners combine
-                the speed of Depop with a more polished identity.
-              </p>
+        <section class="workspace" aria-live="polite">
+          <section class="view-panel is-active" id="browse-view" data-view-panel="browse">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Approved drop</p>
+                <h2>Browse pieces ready to request.</h2>
+              </div>
+              <div class="search-wrap">
+                <label for="search-input">Search</label>
+                <input
+                  id="search-input"
+                  type="search"
+                  placeholder="Piece, seller, size"
+                  autocomplete="off"
+                />
+              </div>
             </div>
 
-            <div class="app-stack">
-              <div class="app-card">
-                <p class="card-label">Seller guide</p>
-                <h3>Onboard new sellers with clarity</h3>
-              </div>
-              <div class="app-card">
-                <p class="card-label">Drop alerts</p>
-                <h3>Make every fresh upload feel like an event</h3>
-              </div>
-              <div class="app-card accent-card">
-                <p class="card-label">Built for Gen Z thrift culture</p>
-                <h3>Playful, collectible, instantly recognizable</h3>
+            <div class="chip-row" aria-label="Categories">
+              <button class="chip is-active" type="button" data-category="all">All</button>
+              <button class="chip" type="button" data-category="Tops">Tops</button>
+              <button class="chip" type="button" data-category="Outerwear">Outerwear</button>
+              <button class="chip" type="button" data-category="Shoes">Shoes</button>
+              <button class="chip" type="button" data-category="Accessories">Accessories</button>
+            </div>
+
+            <div class="browse-layout">
+              <div class="listing-grid" id="listing-grid"></div>
+
+              <aside class="request-panel" aria-label="Request item">
+                <div id="request-empty" class="empty-state">
+                  <p class="script-label small">Request</p>
+                  <h3>Select a piece</h3>
+                  <p>Buyer requests land in admin for manual payment, QC, and delivery.</p>
+                </div>
+
+                <form class="stacked-form is-hidden" id="order-form" hidden>
+                  <div class="request-selected" id="request-selected"></div>
+                  <label>
+                    Buyer name
+                    <input id="order-name" name="buyerName" type="text" required />
+                  </label>
+                  <label>
+                    Contact
+                    <input
+                      id="order-contact"
+                      name="contact"
+                      type="text"
+                      placeholder="Phone, WhatsApp, or email"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Note
+                    <textarea
+                      id="order-note"
+                      name="note"
+                      rows="4"
+                      placeholder="Size question, city, delivery note"
+                    ></textarea>
+                  </label>
+                  <button class="button primary" type="submit">Request item</button>
+                </form>
+              </aside>
+            </div>
+          </section>
+
+          <section class="view-panel" id="sell-view" data-view-panel="sell">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Seller upload</p>
+                <h2>List a piece for approval.</h2>
               </div>
             </div>
-          </div>
+
+            <div class="sell-layout">
+              <form class="form-panel" id="listing-form">
+                <div class="form-grid">
+                  <label>
+                    Item name
+                    <input id="listing-title" name="title" type="text" required />
+                  </label>
+                  <label>
+                    Price
+                    <input id="listing-price" name="price" type="number" min="1" step="1" required />
+                  </label>
+                  <label>
+                    Category
+                    <select id="listing-category" name="category">
+                      <option>Tops</option>
+                      <option>Outerwear</option>
+                      <option>Shoes</option>
+                      <option>Accessories</option>
+                    </select>
+                  </label>
+                  <label>
+                    Size
+                    <input id="listing-size" name="size" type="text" placeholder="S, M, 38, One size" />
+                  </label>
+                  <label>
+                    Condition
+                    <select id="listing-condition" name="condition">
+                      <option>Brand new</option>
+                      <option>Like new</option>
+                      <option>Lightly worn</option>
+                      <option>Vintage wear</option>
+                    </select>
+                  </label>
+                  <label>
+                    Location
+                    <input id="listing-location" name="location" type="text" placeholder="Lahore" />
+                  </label>
+                </div>
+
+                <label>
+                  Description
+                  <textarea
+                    id="listing-description"
+                    name="description"
+                    rows="4"
+                    placeholder="Fabric, fit, retail price, tiny flaws"
+                    required
+                  ></textarea>
+                </label>
+
+                <div class="media-inputs">
+                  <label>
+                    Image URL
+                    <input id="listing-image-url" name="imageUrl" type="url" placeholder="https://..." />
+                  </label>
+                  <label>
+                    Upload image
+                    <input id="listing-image-file" name="imageFile" type="file" accept="image/*" />
+                  </label>
+                  <div class="image-preview" id="image-preview" aria-label="Listing image preview">
+                    <span>No image selected</span>
+                  </div>
+                </div>
+
+                <button class="button primary" type="submit">Submit for approval</button>
+              </form>
+
+              <aside class="queue-panel">
+                <div class="section-title">
+                  <p class="eyebrow">Seller queue</p>
+                  <h3>Your latest listings</h3>
+                </div>
+                <div class="queue-list" id="seller-listings"></div>
+              </aside>
+            </div>
+          </section>
+
+          <section class="view-panel" id="admin-view" data-view-panel="admin">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Admin review</p>
+                <h2>Approve listings before they go public.</h2>
+              </div>
+            </div>
+
+            <div class="admin-layout">
+              <section class="review-panel">
+                <div class="section-title">
+                  <p class="eyebrow">Approval queue</p>
+                  <h3>Pending listings</h3>
+                </div>
+                <div class="queue-list" id="pending-listings"></div>
+              </section>
+
+              <section class="review-panel">
+                <div class="section-title">
+                  <p class="eyebrow">Buyer requests</p>
+                  <h3>Manual order desk</h3>
+                </div>
+                <div class="queue-list" id="order-list"></div>
+              </section>
+            </div>
+          </section>
         </section>
       </main>
     </div>
 
-    <footer class="footer">
-      <p>Bechdou concept site</p>
-      <a href="#hero">Back to top</a>
-    </footer>
-
-    <script src="./script.js"></script>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./script.js?v=4"></script>
   </body>
 </html>
