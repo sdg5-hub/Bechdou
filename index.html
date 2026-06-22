@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bechdou | MVP Marketplace</title>
+    <title>Bechdou | Marketplace OS</title>
     <meta
       name="description"
-      content="A clean Bechdou MVP marketplace where users can create accounts, upload listings, approve listings, browse approved pieces, and request items."
+      content="Bechdou marketplace operating prototype with login, seller uploads, buyer checkout requests, admin review, payments handoff, and marketplace intelligence."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,12 +14,12 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=4" />
+    <link rel="stylesheet" href="./styles.css?v=13" />
   </head>
   <body>
     <div class="site-shell">
       <header class="topbar">
-        <a class="brand" href="#browse-view" aria-label="Bechdou marketplace">
+        <a class="brand" href="#pulse-view" aria-label="Bechdou marketplace">
           <span class="brand-mark">B</span>
           <span>
             <strong>Bechdou</strong>
@@ -28,7 +28,10 @@
         </a>
 
         <nav class="topnav" aria-label="Marketplace views">
-          <button class="nav-button is-active" type="button" data-view-target="browse">
+          <button class="nav-button is-active" type="button" data-view-target="pulse">
+            Pulse
+          </button>
+          <button class="nav-button" type="button" data-view-target="browse">
             Browse
           </button>
           <button class="nav-button" type="button" data-view-target="sell">
@@ -51,8 +54,8 @@
             <p class="script-label">Bechdou.pk</p>
             <h1>Shop &amp; sell closet drops.</h1>
             <p class="brand-note">
-              Approved listings, buyer requests, and manual ops in one polished
-              first version.
+              Open clothing resale, admin-moderated listings, Stripe checkout,
+              delivery operations, and GMV growth in one elevated prototype.
             </p>
             <div class="stripe-swatch" aria-hidden="true"></div>
             <img
@@ -63,11 +66,11 @@
             <div class="signal-list" aria-label="Marketplace signals">
               <div>
                 <strong id="approved-count">0</strong>
-                <span>approved pieces</span>
+                <span>approved</span>
               </div>
               <div>
                 <strong id="request-count">0</strong>
-                <span>buyer requests</span>
+                <span>requests</span>
               </div>
               <div>
                 <strong id="account-count">0</strong>
@@ -79,28 +82,71 @@
           <section class="side-panel">
             <div class="section-title">
               <p class="eyebrow">Account</p>
-              <h2>Create profile</h2>
+              <h2>Session</h2>
             </div>
-            <form class="stacked-form" id="account-form">
+
+            <div class="mode-tabs" aria-label="Account mode">
+              <button class="mode-tab is-active" type="button" data-auth-mode="signup">Sign up</button>
+              <button class="mode-tab" type="button" data-auth-mode="login">Log in</button>
+            </div>
+
+            <form class="stacked-form" id="signup-form" data-auth-panel="signup">
               <label>
                 Full name
-                <input id="account-name" name="name" type="text" autocomplete="name" required />
+                <input id="signup-name" name="name" type="text" autocomplete="name" required />
               </label>
               <label>
                 Email
-                <input id="account-email" name="email" type="email" autocomplete="email" required />
+                <input id="signup-email" name="email" type="email" autocomplete="email" required />
               </label>
               <label>
+                Password
+                <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="6" required />
+              </label>
+              <div class="form-grid compact">
+                <label>
+                  Phone
+                  <input id="signup-phone" name="phone" type="tel" autocomplete="tel" placeholder="+92..." />
+                </label>
+                <label>
+                  City
+                  <input id="signup-city" name="city" type="text" autocomplete="address-level2" placeholder="Lahore" />
+                </label>
+              </div>
+              <label>
                 Role
-                <select id="account-role" name="role">
+                <select id="signup-role" name="role">
                   <option value="buyer">Buyer</option>
                   <option value="seller">Seller</option>
                   <option value="admin">Admin</option>
                 </select>
               </label>
-              <button class="button primary" type="submit">Sign up</button>
+              <button class="button primary" type="submit">Create account</button>
             </form>
+
+            <form class="stacked-form is-hidden" id="login-form" data-auth-panel="login" hidden>
+              <label>
+                Email
+                <input id="login-email" name="email" type="email" autocomplete="email" required />
+              </label>
+              <label>
+                Password
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+              </label>
+              <button class="button primary" type="submit">Log in</button>
+            </form>
+
             <div class="account-summary" id="current-account" hidden></div>
+          </section>
+
+          <section class="side-panel compact">
+            <p class="eyebrow">Access</p>
+            <div class="session-summary" id="session-summary"></div>
+          </section>
+
+          <section class="side-panel compact">
+            <p class="eyebrow">Payments</p>
+            <div class="payment-summary" id="payment-summary"></div>
           </section>
 
           <section class="side-panel compact">
@@ -110,7 +156,45 @@
         </aside>
 
         <section class="workspace" aria-live="polite">
-          <section class="view-panel is-active" id="browse-view" data-view-panel="browse">
+          <section class="view-panel is-active" id="pulse-view" data-view-panel="pulse">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Marketplace pulse</p>
+                <h2>Command view for Bechdou.</h2>
+              </div>
+              <div class="status-card" id="active-user-card"></div>
+            </div>
+
+            <div class="metric-grid" id="market-metrics"></div>
+
+            <div class="dashboard-layout">
+              <section class="dashboard-panel">
+                <div class="section-title">
+                  <p class="eyebrow">Role dashboard</p>
+                  <h3 id="role-dashboard-title">Account console</h3>
+                </div>
+                <div id="role-dashboard"></div>
+              </section>
+
+              <section class="dashboard-panel">
+                <div class="section-title">
+                  <p class="eyebrow">Activity</p>
+                  <h3>Marketplace feed</h3>
+                </div>
+                <div class="activity-list" id="activity-feed"></div>
+              </section>
+
+              <section class="dashboard-panel">
+                <div class="section-title">
+                  <p class="eyebrow">CEO lens</p>
+                  <h3>Next board questions</h3>
+                </div>
+                <div class="question-list" id="ceo-questions"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="view-panel" id="browse-view" data-view-panel="browse">
             <div class="section-head">
               <div>
                 <p class="eyebrow">Approved drop</p>
@@ -121,7 +205,7 @@
                 <input
                   id="search-input"
                   type="search"
-                  placeholder="Piece, seller, size"
+                  placeholder="Piece, seller, brand, size"
                   autocomplete="off"
                 />
               </div>
@@ -135,14 +219,54 @@
               <button class="chip" type="button" data-category="Accessories">Accessories</button>
             </div>
 
+            <div class="filter-grid">
+              <label>
+                City
+                <select id="filter-city">
+                  <option value="all">All cities</option>
+                </select>
+              </label>
+              <label>
+                Condition
+                <select id="filter-condition">
+                  <option value="all">All condition</option>
+                </select>
+              </label>
+              <label>
+                Min price
+                <input id="filter-min-price" type="number" min="0" step="100" placeholder="0" />
+              </label>
+              <label>
+                Max price
+                <input id="filter-max-price" type="number" min="0" step="100" placeholder="5000" />
+              </label>
+              <label>
+                Sort
+                <select id="filter-sort">
+                  <option value="newest">Newest</option>
+                  <option value="price-low">Price low</option>
+                  <option value="price-high">Price high</option>
+                  <option value="quality">Quality score</option>
+                  <option value="saved">Most saved</option>
+                </select>
+              </label>
+              <label class="toggle-line">
+                <input id="filter-saved" type="checkbox" />
+                Saved only
+              </label>
+            </div>
+
             <div class="browse-layout">
-              <div class="listing-grid" id="listing-grid"></div>
+              <div>
+                <div class="results-bar" id="results-bar"></div>
+                <div class="listing-grid" id="listing-grid"></div>
+              </div>
 
               <aside class="request-panel" aria-label="Request item">
                 <div id="request-empty" class="empty-state">
                   <p class="script-label small">Request</p>
                   <h3>Select a piece</h3>
-                  <p>Buyer requests land in admin for manual payment, QC, and delivery.</p>
+                  <p>Buyer checkout lands in admin for payment, QC, and delivery.</p>
                 </div>
 
                 <form class="stacked-form is-hidden" id="order-form" hidden>
@@ -162,15 +286,32 @@
                     />
                   </label>
                   <label>
+                    Payment method
+                    <select id="order-payment-method" name="paymentMethod"></select>
+                  </label>
+                  <label>
+                    Payment reference
+                    <input
+                      id="order-payment-reference"
+                      name="paymentReference"
+                      type="text"
+                      placeholder="Wallet txn ID or transfer note"
+                    />
+                  </label>
+                  <label>
+                    Delivery city
+                    <input id="order-delivery-city" name="deliveryCity" type="text" placeholder="Lahore" />
+                  </label>
+                  <label>
                     Note
                     <textarea
                       id="order-note"
                       name="note"
                       rows="4"
-                      placeholder="Size question, city, delivery note"
+                      placeholder="Size question, delivery note"
                     ></textarea>
                   </label>
-                  <button class="button primary" type="submit">Request item</button>
+                  <button class="button primary" type="submit">Request checkout</button>
                 </form>
               </aside>
             </div>
@@ -179,10 +320,13 @@
           <section class="view-panel" id="sell-view" data-view-panel="sell">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Seller upload</p>
+                <p class="eyebrow">Seller studio</p>
                 <h2>List a piece for approval.</h2>
               </div>
+              <div class="role-note" id="seller-role-note"></div>
             </div>
+
+            <div class="seller-metrics" id="seller-metrics"></div>
 
             <div class="sell-layout">
               <form class="form-panel" id="listing-form">
@@ -192,8 +336,16 @@
                     <input id="listing-title" name="title" type="text" required />
                   </label>
                   <label>
+                    Brand
+                    <input id="listing-brand" name="brand" type="text" placeholder="Zara, Mango, local" />
+                  </label>
+                  <label>
                     Price
                     <input id="listing-price" name="price" type="number" min="1" step="1" required />
+                  </label>
+                  <label>
+                    Retail price
+                    <input id="listing-retail-price" name="retailPrice" type="number" min="1" step="1" placeholder="Original price" />
                   </label>
                   <label>
                     Category
@@ -221,7 +373,20 @@
                     Location
                     <input id="listing-location" name="location" type="text" placeholder="Lahore" />
                   </label>
+                  <label>
+                    Color
+                    <input id="listing-color" name="color" type="text" placeholder="Powder blue" />
+                  </label>
+                  <label>
+                    Fabric
+                    <input id="listing-fabric" name="fabric" type="text" placeholder="Cotton, satin, wool" />
+                  </label>
                 </div>
+
+                <label>
+                  Measurements
+                  <input id="listing-measurements" name="measurements" type="text" placeholder="Bust, waist, length, heel height" />
+                </label>
 
                 <label>
                   Description
@@ -233,6 +398,35 @@
                     required
                   ></textarea>
                 </label>
+
+                <label>
+                  Flaws
+                  <textarea
+                    id="listing-flaws"
+                    name="flaws"
+                    rows="3"
+                    placeholder="Mention marks, pulls, fading, repairs, or none"
+                  ></textarea>
+                </label>
+
+                <div class="check-grid" aria-label="Listing quality checklist">
+                  <label class="toggle-line">
+                    <input name="hasFrontPhoto" type="checkbox" checked />
+                    Front photo
+                  </label>
+                  <label class="toggle-line">
+                    <input name="hasBackPhoto" type="checkbox" />
+                    Back photo
+                  </label>
+                  <label class="toggle-line">
+                    <input name="hasLabelPhoto" type="checkbox" />
+                    Label photo
+                  </label>
+                  <label class="toggle-line">
+                    <input name="hasMeasurements" type="checkbox" />
+                    Measurements
+                  </label>
+                </div>
 
                 <div class="media-inputs">
                   <label>
@@ -256,6 +450,7 @@
                   <p class="eyebrow">Seller queue</p>
                   <h3>Your latest listings</h3>
                 </div>
+                <div class="listing-assistant" id="listing-assistant"></div>
                 <div class="queue-list" id="seller-listings"></div>
               </aside>
             </div>
@@ -265,9 +460,12 @@
             <div class="section-head">
               <div>
                 <p class="eyebrow">Admin review</p>
-                <h2>Approve listings before they go public.</h2>
+                <h2>Control quality, payments, and delivery.</h2>
               </div>
+              <div class="role-note" id="admin-role-note"></div>
             </div>
+
+            <div class="admin-kpis" id="admin-kpis"></div>
 
             <div class="admin-layout">
               <section class="review-panel">
@@ -285,6 +483,22 @@
                 </div>
                 <div class="queue-list" id="order-list"></div>
               </section>
+
+              <section class="review-panel">
+                <div class="section-title">
+                  <p class="eyebrow">Accounts</p>
+                  <h3>User control</h3>
+                </div>
+                <div class="account-table" id="account-table"></div>
+              </section>
+
+              <section class="review-panel">
+                <div class="section-title">
+                  <p class="eyebrow">Ledger</p>
+                  <h3>Ops history</h3>
+                </div>
+                <div class="ledger-list" id="ledger-list"></div>
+              </section>
             </div>
           </section>
         </section>
@@ -292,6 +506,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./script.js?v=4"></script>
+    <script src="./script.js?v=13"></script>
   </body>
 </html>
