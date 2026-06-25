@@ -1,0 +1,19 @@
+{
+  "name": "Bechdou — Pakistan's fashion resale marketplace",
+  "short_name": "Bechdou",
+  "description": "Buy and sell preloved fashion across Pakistan. Cash on Delivery, verified seller closets, and buyer protection.",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f3ee",
+  "theme_color": "#6e0f1f",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
