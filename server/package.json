@@ -1,0 +1,17 @@
+{
+  "name": "bechdou-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bechdou marketplace backend — Express + SQLite (node:sqlite) REST API",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node --experimental-sqlite index.js",
+    "dev": "node --experimental-sqlite --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

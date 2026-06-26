@@ -2,40 +2,67 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bechdou | Marketplace OS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Bechdou — Pakistan's fashion resale marketplace</title>
     <meta
       name="description"
-      content="Bechdou marketplace operating prototype with login, seller uploads, buyer checkout requests, admin review, payments handoff, and marketplace intelligence."
+      content="Buy and sell preloved fashion across Pakistan. Cash on Delivery, verified seller closets, and buyer protection — Bechdou is Pakistan's community resale marketplace."
     />
+    <meta name="theme-color" content="#6e0f1f" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
+    <link rel="apple-touch-icon" href="./assets/icon.svg" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Bechdou" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Open Graph / social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Bechdou" />
+    <meta property="og:title" content="Bechdou — Pakistan's fashion resale marketplace" />
+    <meta
+      property="og:description"
+      content="Preloved fashion, verified closets, Cash on Delivery across Pakistan."
+    />
+    <meta property="og:image" content="./assets/bechdou-editorial-collage.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=13" />
+    <link rel="stylesheet" href="./styles.css?v=14" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="site-shell">
       <header class="topbar">
-        <a class="brand" href="#pulse-view" aria-label="Bechdou marketplace">
+        <a class="brand" href="#home-view" data-view-target="home" aria-label="Bechdou home">
           <span class="brand-mark">B</span>
           <span>
             <strong>Bechdou</strong>
-            <small>Curated resale</small>
+            <small>Pakistan resale</small>
           </span>
         </a>
 
         <nav class="topnav" aria-label="Marketplace views">
-          <button class="nav-button is-active" type="button" data-view-target="pulse">
-            Pulse
+          <button class="nav-button is-active" type="button" data-view-target="home">
+            Home
           </button>
           <button class="nav-button" type="button" data-view-target="browse">
             Browse
           </button>
           <button class="nav-button" type="button" data-view-target="sell">
             Sell
+          </button>
+          <button class="nav-button" type="button" data-view-target="pulse">
+            Pulse
           </button>
           <button class="nav-button" type="button" data-view-target="admin">
             Admin
@@ -48,7 +75,7 @@
         </div>
       </header>
 
-      <main class="market-shell">
+      <main class="market-shell" id="main-content">
         <aside class="brand-rail" aria-label="Bechdou account and status">
           <section class="brand-panel">
             <p class="script-label">Bechdou.pk</p>
@@ -156,7 +183,295 @@
         </aside>
 
         <section class="workspace" aria-live="polite">
-          <section class="view-panel is-active" id="pulse-view" data-view-panel="pulse">
+          <section
+            class="view-panel is-active"
+            id="home-view"
+            data-view-panel="home"
+            aria-label="Bechdou storefront"
+          >
+            <!-- HERO -->
+            <section class="home-hero" aria-label="Welcome to Bechdou">
+              <div class="home-hero__media" aria-hidden="true">
+                <img
+                  src="./assets/bechdou-editorial-collage.png"
+                  alt=""
+                  fetchpriority="high"
+                  decoding="async"
+                />
+                <span class="home-hero__scrim"></span>
+              </div>
+              <div class="home-hero__inner">
+                <p class="hero-eyebrow reveal">Preloved · Pakistan · Premium</p>
+                <h1 class="hero-title reveal">
+                  Pakistan's fashion <em>resale</em> marketplace.
+                </h1>
+                <p class="hero-sub reveal">
+                  Shop verified closets, pay Cash on Delivery, and resell the pieces
+                  you've outgrown — a community built for Lahore, Karachi, Islamabad
+                  and beyond.
+                </p>
+                <div class="hero-actions reveal">
+                  <button class="button primary lg" type="button" data-view-target="browse">
+                    Shop now
+                  </button>
+                  <button class="button ghost-light lg" type="button" data-view-target="sell">
+                    Sell your fit
+                  </button>
+                </div>
+                <button class="hero-install" id="hero-install" type="button" hidden>
+                  <span class="hero-install__glyph" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+                  </span>
+                  <span>Add <strong>Bechdou</strong> to your Homescreen</span>
+                </button>
+                <dl class="hero-stats reveal" aria-label="Marketplace at a glance">
+                  <div><dt id="hero-stat-items">—</dt><dd>pieces live</dd></div>
+                  <div><dt id="hero-stat-closets">—</dt><dd>seller closets</dd></div>
+                  <div><dt id="hero-stat-cities">—</dt><dd>cities</dd></div>
+                </dl>
+              </div>
+              <a class="hero-scroll" href="#trust-strip" aria-label="Scroll to explore">
+                <span aria-hidden="true">Scroll</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              </a>
+            </section>
+
+            <!-- TRUST STRIP -->
+            <ul class="trust-strip" id="trust-strip" aria-label="Why shop with Bechdou">
+              <li class="trust-pill">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
+                <div><strong>Cash on Delivery</strong><span>Pay when it arrives</span></div>
+              </li>
+              <li class="trust-pill">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                <div><strong>Buyer Protection</strong><span>QC before dispatch</span></div>
+              </li>
+              <li class="trust-pill">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a7 7 0 0 1 13 0"/></svg>
+                <div><strong>Verified Closets</strong><span>Trusted local sellers</span></div>
+              </li>
+              <li class="trust-pill">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.6A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+                <div><strong>WhatsApp Support</strong><span>Chat any seller</span></div>
+              </li>
+            </ul>
+
+            <!-- TRENDING DROPS -->
+            <section class="home-section reveal" aria-labelledby="trending-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Just dropped</p>
+                  <h2 id="trending-h">Trending drops</h2>
+                </div>
+                <button class="link-button" type="button" data-view-target="browse">
+                  View all
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+              <div class="carousel" id="home-trending" role="list" aria-busy="true"></div>
+            </section>
+
+            <!-- SHOP BY CATEGORY -->
+            <section class="home-section reveal" aria-labelledby="cat-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Find your aisle</p>
+                  <h2 id="cat-h">Shop by category</h2>
+                </div>
+              </div>
+              <div class="category-tiles" id="home-categories"></div>
+            </section>
+
+            <!-- CURATED COLLECTIONS -->
+            <section class="home-section reveal" aria-labelledby="coll-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Editor's edit</p>
+                  <h2 id="coll-h">Curated collections</h2>
+                </div>
+              </div>
+              <div class="collection-grid" id="home-collections"></div>
+            </section>
+
+            <!-- FEATURED CLOSETS -->
+            <section class="home-section reveal" aria-labelledby="closets-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Community</p>
+                  <h2 id="closets-h">Featured seller closets</h2>
+                </div>
+                <button class="link-button" type="button" data-view-target="browse">
+                  Explore all
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+              <div class="closet-row" id="home-closets"></div>
+            </section>
+
+            <!-- STYLE ICON PICKS -->
+            <section class="home-section reveal" aria-labelledby="staff-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Style icon picks</p>
+                  <h2 id="staff-h">Best below retail</h2>
+                </div>
+                <button class="link-button" type="button" data-view-target="browse">
+                  View all
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+              <div class="carousel" id="home-staff" role="list" aria-busy="true"></div>
+            </section>
+
+            <!-- HOW IT WORKS -->
+            <section class="home-section how reveal" aria-labelledby="how-h">
+              <div class="home-section__head center">
+                <div>
+                  <p class="eyebrow">Simple &amp; safe</p>
+                  <h2 id="how-h">How Bechdou works</h2>
+                </div>
+              </div>
+              <ol class="how-steps">
+                <li class="how-step">
+                  <span class="how-step__num">1</span>
+                  <h3>Discover &amp; save</h3>
+                  <p>Browse verified closets, heart your favourites, and filter by city, size and budget.</p>
+                </li>
+                <li class="how-step">
+                  <span class="how-step__num">2</span>
+                  <h3>Request &amp; chat</h3>
+                  <p>Tap a piece to request checkout or message the seller on WhatsApp to confirm fit.</p>
+                </li>
+                <li class="how-step">
+                  <span class="how-step__num">3</span>
+                  <h3>Pay on delivery</h3>
+                  <p>We QC every order, dispatch with trusted carriers, and you pay Cash on Delivery.</p>
+                </li>
+              </ol>
+              <p class="how-note">
+                <strong>Cash on Delivery</strong> available nationwide via TCS &amp; Leopards · Easy cancellations before dispatch
+              </p>
+            </section>
+
+            <!-- FEATURED OUTFITS -->
+            <section class="home-section reveal" aria-labelledby="fits-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">#BechdouFits</p>
+                  <h2 id="fits-h">Featured outfits</h2>
+                </div>
+              </div>
+              <div class="fits-collage" id="home-outfits"></div>
+            </section>
+
+            <!-- TESTIMONIALS -->
+            <section class="home-section reveal" aria-labelledby="quotes-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Loved locally</p>
+                  <h2 id="quotes-h">What the community says</h2>
+                </div>
+              </div>
+              <div class="quote-grid">
+                <figure class="quote-card">
+                  <blockquote>"Sold three kurtas in a weekend and the COD payout was smooth. Bechdou feels made for Pakistan."</blockquote>
+                  <figcaption><span class="quote-av">A</span><span><strong>Aiza</strong><small>Seller · Lahore</small></span></figcaption>
+                </figure>
+                <figure class="quote-card">
+                  <blockquote>"Paid on delivery, checked the blouse at my door, kept it. Exactly the trust I wanted."</blockquote>
+                  <figcaption><span class="quote-av">M</span><span><strong>Mina</strong><small>Buyer · Karachi</small></span></figcaption>
+                </figure>
+                <figure class="quote-card">
+                  <blockquote>"The closets feel curated, not cluttered. My vintage finds get seen by the right people."</blockquote>
+                  <figcaption><span class="quote-av">N</span><span><strong>Noor</strong><small>Seller · Islamabad</small></span></figcaption>
+                </figure>
+              </div>
+            </section>
+
+            <!-- FAQ -->
+            <section class="home-section reveal" aria-labelledby="faq-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Good to know</p>
+                  <h2 id="faq-h">Frequently asked</h2>
+                </div>
+              </div>
+              <div class="faq-list">
+                <details class="faq-item">
+                  <summary>Is Cash on Delivery really available everywhere?<span class="faq-mark" aria-hidden="true"></span></summary>
+                  <p>Yes — COD is our default across major Pakistani cities through TCS and Leopards. You only pay once the parcel reaches you.</p>
+                </details>
+                <details class="faq-item">
+                  <summary>How do I know a seller is genuine?<span class="faq-mark" aria-hidden="true"></span></summary>
+                  <p>Closets carry a verified badge and a trust score. Every listing is admin-reviewed for photos and quality before it goes live.</p>
+                </details>
+                <details class="faq-item">
+                  <summary>Can I sell my own clothes?<span class="faq-mark" aria-hidden="true"></span></summary>
+                  <p>Absolutely. Tap <em>Sell your fit</em>, upload a few photos, set your price, and submit for approval — it's free to list.</p>
+                </details>
+                <details class="faq-item">
+                  <summary>What if the item isn't as described?<span class="faq-mark" aria-hidden="true"></span></summary>
+                  <p>Buyer Protection lets you decline at the door before paying. Orders are QC-checked before dispatch to avoid surprises.</p>
+                </details>
+              </div>
+            </section>
+
+            <!-- CTA BAND -->
+            <section class="home-cta reveal" aria-label="Start selling on Bechdou">
+              <div class="home-cta__inner">
+                <p class="script-label small">Your closet</p>
+                <h2>Start your closet in minutes.</h2>
+                <p class="home-cta__sub">Turn the pieces you've outgrown into cash. List free, reach buyers nationwide, get paid on delivery.</p>
+                <div class="hero-actions">
+                  <button class="button primary lg" type="button" data-view-target="sell">Start selling</button>
+                  <button class="button secondary lg" type="button" data-view-target="browse">Keep shopping</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- FOOTER -->
+            <footer class="site-footer">
+              <div class="site-footer__brand">
+                <p class="script-label small">Bechdou.pk</p>
+                <p>Pakistan's community marketplace for preloved fashion. Buy, sell, and restyle — Cash on Delivery, nationwide.</p>
+                <div class="footer-social" aria-label="Bechdou social links">
+                  <a class="footer-social__link" href="https://wa.me/923000000000" target="_blank" rel="noopener" aria-label="WhatsApp">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.2-.8-2.7-1.1-4.4-3.9-4.5-4-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.2.2-.4.4-.2.7s.7 1.2 1.5 1.9c1 .9 1.8 1.1 2.1 1.3.2.1.4.1.6-.1l.7-.9c.2-.3.4-.2.6-.1l1.9.9c.2.1.4.2.5.3.1.2.1.7-.1 1.2Z"/></svg>
+                  </a>
+                  <a class="footer-social__link" href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+                  </a>
+                  <a class="footer-social__link" href="https://tiktok.com" target="_blank" rel="noopener" aria-label="TikTok">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M16 3c.3 2.1 1.5 3.6 3.6 3.8v2.7c-1.3.1-2.5-.3-3.6-1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .6 0 .9.1v2.8a2.8 2.8 0 1 0 1.9 2.7V3H16Z"/></svg>
+                  </a>
+                </div>
+              </div>
+              <nav class="site-footer__cols" aria-label="Footer">
+                <div>
+                  <h3>Shop</h3>
+                  <button class="footer-link" type="button" data-view-target="browse">Browse all</button>
+                  <button class="footer-link" type="button" data-category-jump="Tops">Tops</button>
+                  <button class="footer-link" type="button" data-category-jump="Outerwear">Outerwear</button>
+                  <button class="footer-link" type="button" data-category-jump="Shoes">Shoes</button>
+                </div>
+                <div>
+                  <h3>Sell</h3>
+                  <button class="footer-link" type="button" data-view-target="sell">List an item</button>
+                  <button class="footer-link" type="button" data-view-target="sell">Seller studio</button>
+                  <button class="footer-link" type="button" data-view-target="pulse">Your dashboard</button>
+                </div>
+                <div>
+                  <h3>Company</h3>
+                  <a class="footer-link" href="https://wa.me/923000000000" target="_blank" rel="noopener">WhatsApp us</a>
+                  <button class="footer-link" type="button" data-view-target="home">How it works</button>
+                  <span class="footer-link is-muted">Lahore · Karachi · Islamabad</span>
+                </div>
+              </nav>
+              <p class="site-footer__legal">© 2026 Bechdou · Pakistan's fashion resale marketplace · Cash on Delivery nationwide</p>
+            </footer>
+          </section>
+
+          <section class="view-panel" id="pulse-view" data-view-panel="pulse">
             <div class="section-head">
               <div>
                 <p class="eyebrow">Marketplace pulse</p>
@@ -505,7 +820,58 @@
       </main>
     </div>
 
+    <!-- PWA install banner -->
+    <div class="install-banner" id="install-banner" role="dialog" aria-label="Install Bechdou app" hidden>
+      <span class="install-banner__icon" aria-hidden="true">
+        <img src="./assets/icon.svg" alt="" width="38" height="38" />
+      </span>
+      <div class="install-banner__copy">
+        <strong>Add Bechdou to your phone</strong>
+        <span>Full-screen, fast, one tap from your homescreen.</span>
+      </div>
+      <div class="install-banner__actions">
+        <button class="button primary sm" type="button" id="install-accept">Install</button>
+        <button class="install-banner__close" type="button" id="install-dismiss" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile sticky bottom nav -->
+    <nav class="bottom-nav" aria-label="Primary mobile navigation">
+      <button class="bottom-nav__item is-active" type="button" data-view-target="home">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="bottom-nav__item" type="button" data-view-target="browse">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span>Browse</span>
+      </button>
+      <button class="bottom-nav__item bottom-nav__sell" type="button" data-view-target="sell">
+        <span class="bottom-nav__plus" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+        <span>Sell</span>
+      </button>
+      <button class="bottom-nav__item" type="button" data-view-target="pulse">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a7 7 0 0 1 13 0"/></svg>
+        <span>Account</span>
+      </button>
+    </nav>
+
+    <!-- Product quick view (detail) -->
+    <div class="modal" id="quickview" role="dialog" aria-modal="true" aria-labelledby="qv-title" hidden>
+      <div class="modal__backdrop" data-modal-close></div>
+      <div class="modal__panel">
+        <button class="modal__close" type="button" data-modal-close aria-label="Close quick view">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <div class="qv" id="qv-body"></div>
+      </div>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./script.js?v=13"></script>
+    <script src="./api.js?v=15"></script>
+    <script src="./script.js?v=15"></script>
   </body>
 </html>

@@ -1,0 +1,18 @@
+# Dependencies
+server/node_modules/
+node_modules/
+
+# Database (regenerated from seed on first run)
+server/*.db
+server/*.db-journal
+server/*.db-wal
+server/*.db-shm
+
+# Uploaded media (runtime)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# OS / editor cruft
+.DS_Store
+**/.DS_Store
+*\ 2.js

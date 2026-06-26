@@ -3,7 +3,7 @@ const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
 const DEMO_PASSWORD = "bechdou123";
 const COMMISSION_RATE = 0.15;
 
-const paymentOptions = [
+let paymentOptions = [
   {
     id: "stripe-checkout",
     label: "Stripe Checkout",
@@ -312,7 +312,50 @@ const seedState = {
   selectedListingId: "",
 };
 
-let state = loadState();
+// State is hydrated from the backend (/api/bootstrap) — no longer localStorage.
+let state = {
+  accounts: [],
+  currentUserId: "",
+  listings: [],
+  orders: [],
+  auditLog: [],
+  selectedListingId: "",
+  account: null,
+  marketStatus: { reserved: [], sold: [] },
+};
+
+function applyBootstrap(data) {
+  state = {
+    accounts: data.accounts || [],
+    currentUserId: data.account?.id || "",
+    listings: data.listings || [],
+    orders: data.orders || [],
+    auditLog: data.events || [],
+    selectedListingId: state.selectedListingId || "",
+    account: data.account || null,
+    marketStatus: data.marketStatus || { reserved: [], sold: [] },
+  };
+  if (Array.isArray(data.paymentOptions) && data.paymentOptions.length) {
+    paymentOptions = data.paymentOptions;
+  }
+}
+
+async function refresh() {
+  applyBootstrap(await API.bootstrap());
+  renderAll();
+}
+
+async function boot() {
+  try {
+    applyBootstrap(await API.bootstrap());
+  } catch (error) {
+    showToast(error.message || "Could not reach the Bechdou server.");
+  }
+  renderPaymentMethodOptions();
+  renderAll();
+  switchView("home");
+}
+
 let filters = {
   category: "all",
   search: "",
@@ -381,7 +424,64 @@ const dom = {
   adminKpis: document.getElementById("admin-kpis"),
   resetDemo: document.getElementById("reset-demo"),
   toast: document.getElementById("toast"),
+  // Consumer storefront
+  heroStatItems: document.getElementById("hero-stat-items"),
+  heroStatClosets: document.getElementById("hero-stat-closets"),
+  heroStatCities: document.getElementById("hero-stat-cities"),
+  heroInstall: document.getElementById("hero-install"),
+  homeTrending: document.getElementById("home-trending"),
+  homeStaff: document.getElementById("home-staff"),
+  homeCategories: document.getElementById("home-categories"),
+  homeCollections: document.getElementById("home-collections"),
+  homeClosets: document.getElementById("home-closets"),
+  homeOutfits: document.getElementById("home-outfits"),
+  installBanner: document.getElementById("install-banner"),
+  installAccept: document.getElementById("install-accept"),
+  installDismiss: document.getElementById("install-dismiss"),
+  quickview: document.getElementById("quickview"),
+  qvBody: document.getElementById("qv-body"),
 };
+
+const icons = {
+  heart: (filled) =>
+    `<svg viewBox="0 0 24 24" width="15" height="15" fill="${filled ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-9.3-8.4A5 5 0 0 1 12 6a5 5 0 0 1 9.3 5.6C19 15.6 12 20 12 20Z"/></svg>`,
+  eye: `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  share: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>`,
+  verified: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>`,
+  whatsapp: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.2-.8-2.7-1.1-4.4-3.9-4.5-4-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.2.2-.4.4-.2.7s.7 1.2 1.5 1.9c1 .9 1.8 1.1 2.1 1.3.2.1.4.1.6-.1l.7-.9c.2-.3.4-.2.6-.1l1.9.9c.2.1.4.2.5.3.1.2.1.7-.1 1.2Z"/></svg>`,
+};
+
+function initials(name) {
+  const words = String(name || "").trim().split(/\s+/);
+  return ((words[0]?.[0] || "") + (words[1]?.[0] || "")).toUpperCase() || "B";
+}
+
+function sellerApprovedListings(sellerId) {
+  return state.listings.filter(
+    (listing) => listing.sellerId === sellerId && listing.status === "approved",
+  );
+}
+
+function isVerifiedSeller(account) {
+  return (account?.trustScore || 0) >= 88;
+}
+
+function loveCount(listing) {
+  return (listing.savedBy?.length || 0) + Math.round((listing.views || 0) / 9);
+}
+
+function followerCount(account) {
+  const items = sellerApprovedListings(account.id).length;
+  return (account.trustScore || 70) * 4 + items * 9;
+}
+
+function whatsappLink(account, listing) {
+  const phone = String(account?.phone || "+92 300 0000000").replace(/[^\d]/g, "");
+  const text = encodeURIComponent(
+    `Hi ${account?.name || "there"}, is "${listing.title}" (${money(listing.price)}) still available on Bechdou?`,
+  );
+  return `https://wa.me/${phone}?text=${text}`;
+}
 
 function loadState() {
   try {
@@ -530,8 +630,8 @@ function syncListingSaves(sourceState = state) {
 }
 
 function saveState() {
-  syncListingSaves();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // No-op: the backend is the source of truth. Kept so legacy call sites that
+  // only mutate transient UI state (e.g. selectedListingId) stay harmless.
 }
 
 function makeId(prefix) {
@@ -772,6 +872,8 @@ function switchView(view) {
   dom.panels.forEach((panel) => {
     panel.classList.toggle("is-active", panel.dataset.viewPanel === view);
   });
+  document.body.classList.toggle("home-active", view === "home");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function switchAuthMode(mode) {
@@ -1118,19 +1220,29 @@ function listingCard(listing) {
   const quality = listingQualityScore(listing);
   const discount = listing.retailPrice > listing.price ? Math.round((1 - listing.price / listing.retailPrice) * 100) : 0;
 
+  const seller = accountById(listing.sellerId);
+  const verified = isVerifiedSeller(seller);
+  const id = escapeHtml(listing.id);
+
   return `
-    <article class="listing-card">
-      <div class="listing-media">
-        <img src="${escapeHtml(safeImage(listing.image))}" alt="${escapeHtml(listing.title)}" />
+    <article class="listing-card" role="listitem">
+      <div class="listing-media" data-quickview="${id}" role="button" tabindex="0" aria-label="Quick view ${escapeHtml(listing.title)}">
+        <img src="${escapeHtml(safeImage(listing.image))}" alt="${escapeHtml(listing.title)} — ${escapeHtml(listing.brand)} ${escapeHtml(listing.category)} in ${escapeHtml(listing.location || "Pakistan")}" loading="lazy" decoding="async" />
         <span class="badge">${escapeHtml(listing.category)}</span>
         <button
           class="save-button ${saved ? "is-saved" : ""}"
           type="button"
-          data-toggle-save="${escapeHtml(listing.id)}"
+          data-toggle-save="${id}"
           aria-pressed="${saved ? "true" : "false"}"
+          aria-label="${saved ? "Remove from saved" : "Save piece"}"
         >
-          ${saved ? "Saved" : "Save"}
+          ${icons.heart(saved)} ${saved ? "Saved" : "Save"}
         </button>
+        <div class="card-quick">
+          <button class="quick-act" type="button" data-quickview="${id}" aria-label="Quick view">${icons.eye}</button>
+          <button class="quick-act" type="button" data-share="${id}" aria-label="Share piece">${icons.share}</button>
+          <button class="quick-act" type="button" data-toggle-save="${id}" aria-label="Save piece">${icons.heart(saved)}</button>
+        </div>
       </div>
       <div class="listing-body">
         <div class="listing-title-row">
@@ -1141,16 +1253,22 @@ function listingCard(listing) {
           <span>${escapeHtml(listing.brand)}</span>
           <span>${escapeHtml(listing.size || "One size")}</span>
           <span>${escapeHtml(listing.condition)}</span>
-          <span>${escapeHtml(listing.location || "Pakistan")}</span>
         </p>
-        <p class="listing-description">${escapeHtml(listing.description)}</p>
         <div class="quality-row">
           <span class="${statusClass(availability.label)}">${escapeHtml(availability.label)}</span>
           <span>${quality}% QC</span>
           ${discount ? `<span>${discount}% below retail</span>` : ""}
         </div>
+        <div class="listing-seller">
+          <span class="seller-av">${escapeHtml(initials(listing.sellerName))}</span>
+          <span class="listing-seller__meta">
+            <strong>${escapeHtml(listing.sellerName)}${verified ? `<span class="verified-badge" title="Verified closet">${icons.verified}</span>` : ""}</strong>
+            <span>${escapeHtml(seller?.city || listing.location || "Pakistan")}</span>
+          </span>
+          <span class="listing-likes">${icons.heart(true)} ${loveCount(listing)}</span>
+        </div>
         <div class="listing-actions">
-          <button class="button secondary" type="button" data-request-id="${escapeHtml(listing.id)}" ${
+          <button class="button secondary" type="button" data-request-id="${id}" ${
             availability.locked ? "disabled" : ""
           }>
             Request checkout
@@ -1522,7 +1640,246 @@ function renderLedger() {
     `;
 }
 
+function discountOf(listing) {
+  return listing.retailPrice > listing.price
+    ? Math.round((1 - listing.price / listing.retailPrice) * 100)
+    : 0;
+}
+
+function emptyMini(message) {
+  return `<div class="empty-state"><h3>${escapeHtml(message)}</h3><p>Check back soon — new pieces drop daily.</p></div>`;
+}
+
+function skeletonCards(count) {
+  return Array.from({ length: count })
+    .map(
+      () => `
+      <article class="listing-card is-skeleton" aria-hidden="true">
+        <div class="listing-media skeleton-box"></div>
+        <div class="listing-body">
+          <div class="skeleton-box sk-line" style="width:72%"></div>
+          <div class="skeleton-box sk-line short"></div>
+          <div class="skeleton-box sk-line" style="height:36px;border-radius:7px;margin-top:4px"></div>
+        </div>
+      </article>`,
+    )
+    .join("");
+}
+
+let homeReady = false;
+
+function renderHome() {
+  renderHeroStats();
+  renderHomeCategories();
+  renderHomeCollections();
+  renderHomeClosets();
+  renderHomeOutfits();
+
+  if (!homeReady) {
+    dom.homeTrending.innerHTML = skeletonCards(4);
+    dom.homeStaff.innerHTML = skeletonCards(4);
+    setTimeout(() => {
+      homeReady = true;
+      fillHomeCarousels();
+    }, 700);
+  } else {
+    fillHomeCarousels();
+  }
+}
+
+function fillHomeCarousels() {
+  const approved = state.listings.filter((listing) => listing.status === "approved");
+  const trending = [...approved].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
+  const staff = [...approved].sort((a, b) => discountOf(b) - discountOf(a)).slice(0, 8);
+
+  dom.homeTrending.innerHTML = trending.length ? trending.map(listingCard).join("") : emptyMini("No drops yet");
+  dom.homeStaff.innerHTML = staff.length ? staff.map(listingCard).join("") : emptyMini("Nothing below retail yet");
+  dom.homeTrending.setAttribute("aria-busy", "false");
+  dom.homeStaff.setAttribute("aria-busy", "false");
+}
+
+function renderHeroStats() {
+  const approved = state.listings.filter((listing) => listing.status === "approved");
+  dom.heroStatItems.textContent = approved.length;
+  dom.heroStatClosets.textContent = unique(approved.map((listing) => listing.sellerId)).length;
+  dom.heroStatCities.textContent = unique(approved.map((listing) => listing.location)).length;
+}
+
+function renderHomeCategories() {
+  const approved = state.listings.filter((listing) => listing.status === "approved");
+  const cats = [
+    ["Tops", "Everyday & evening"],
+    ["Outerwear", "Layers & coats"],
+    ["Shoes", "Flats to heels"],
+    ["Accessories", "Bags & extras"],
+  ];
+  dom.homeCategories.innerHTML = cats
+    .map(([name, desc]) => {
+      const count = approved.filter((listing) => listing.category === name).length;
+      return `
+        <button class="category-tile" type="button" data-category-jump="${escapeHtml(name)}">
+          <strong>${escapeHtml(name)}</strong>
+          <span>${count} piece${count === 1 ? "" : "s"} · ${escapeHtml(desc)}</span>
+        </button>`;
+    })
+    .join("");
+}
+
+function renderHomeCollections() {
+  const collections = [
+    { key: "budget", eyebrow: "Smart spend", title: "Under Rs 2,000", sub: "Steals below two grand", img: "./assets/listing-blue-top.png" },
+    { key: "merlot", eyebrow: "Signature", title: "Merlot mood", sub: "Deep reds & wine tones", img: "./assets/listing-merlot-blouse.png" },
+    { key: "neutral", eyebrow: "Quiet luxury", title: "Old-money neutrals", sub: "Cream, linen & camel", img: "./assets/listing-cardigan-flats.png" },
+  ];
+  dom.homeCollections.innerHTML = collections
+    .map(
+      (c) => `
+      <button class="collection-card" type="button" data-collection="${c.key}">
+        <img src="${c.img}" alt="${escapeHtml(c.title)} collection" loading="lazy" decoding="async" />
+        <p class="eyebrow">${escapeHtml(c.eyebrow)}</p>
+        <strong>${escapeHtml(c.title)}</strong>
+        <span>${escapeHtml(c.sub)}</span>
+      </button>`,
+    )
+    .join("");
+}
+
+function closetCard(seller) {
+  const items = sellerApprovedListings(seller.id);
+  const thumbs = items.slice(0, 3);
+  return `
+    <article class="closet-card">
+      <div class="closet-head">
+        <span class="closet-av">${escapeHtml(initials(seller.name))}</span>
+        <span class="closet-id">
+          <strong>${escapeHtml(seller.name)}${isVerifiedSeller(seller) ? `<span class="verified-badge" title="Verified closet">${icons.verified}</span>` : ""}</strong>
+          <span>${escapeHtml(seller.handle || "@" + initials(seller.name).toLowerCase())} · ${escapeHtml(seller.city || "Pakistan")}</span>
+        </span>
+      </div>
+      <div class="closet-stats">
+        <div><strong>${items.length}</strong><span>Pieces</span></div>
+        <div><strong>${followerCount(seller).toLocaleString()}</strong><span>Followers</span></div>
+        <div><strong>${seller.trustScore || 80}%</strong><span>Trust</span></div>
+      </div>
+      <div class="closet-thumbs">
+        ${thumbs.map((l) => `<img src="${escapeHtml(safeImage(l.image))}" alt="${escapeHtml(l.title)}" loading="lazy" />`).join("")}
+      </div>
+      <div class="closet-actions">
+        <button class="button primary" type="button" data-follow-seller="${escapeHtml(seller.name)}">Follow</button>
+        <button class="button secondary" type="button" data-closet-seller="${escapeHtml(seller.name)}">Visit closet</button>
+      </div>
+    </article>`;
+}
+
+function renderHomeClosets() {
+  const sellers = state.accounts
+    .filter((account) => sellerApprovedListings(account.id).length > 0)
+    .sort((a, b) => followerCount(b) - followerCount(a))
+    .slice(0, 3);
+  dom.homeClosets.innerHTML = sellers.length ? sellers.map(closetCard).join("") : emptyMini("No closets yet");
+}
+
+function renderHomeOutfits() {
+  const cells = [
+    { img: "./assets/bechdou-editorial-collage.png", cap: "Summer drop", cls: "tall wide" },
+    { img: "./assets/listing-blue-top.png", cap: "Powder blue", cls: "" },
+    { img: "./assets/listing-merlot-blouse.png", cap: "Merlot mood", cls: "" },
+    { img: "./assets/listing-cardigan-flats.png", cap: "Cream flats", cls: "" },
+    { img: "./assets/bechdou-editorial-collage.png", cap: "#BechdouFits", cls: "" },
+  ];
+  dom.homeOutfits.innerHTML = cells
+    .map(
+      (cell) => `
+      <figure class="${cell.cls}">
+        <img src="${cell.img}" alt="Community outfit — ${escapeHtml(cell.cap)}" loading="lazy" decoding="async" />
+        <figcaption>${escapeHtml(cell.cap)}</figcaption>
+      </figure>`,
+    )
+    .join("");
+}
+
+/* ---------- QUICK VIEW (product detail) ---------- */
+let lastFocusedEl = null;
+
+function openQuickView(listingId) {
+  const listing = listingById(listingId);
+  if (!listing) return;
+  const seller = accountById(listing.sellerId);
+  const verified = isVerifiedSeller(seller);
+  const availability = listingAvailability(listing.id);
+  const saved = isSaved(listing.id);
+  const discount = discountOf(listing);
+  const gallery = unique([safeImage(listing.image), FALLBACK_IMAGE]);
+  const facts = [
+    ["Brand", listing.brand],
+    ["Size", listing.size || "One size"],
+    ["Condition", listing.condition],
+    ["Colour", listing.color],
+    ["Fabric", listing.fabric],
+    ["City", seller?.city || listing.location],
+  ].filter(([, value]) => value);
+
+  dom.qvBody.innerHTML = `
+    <div class="qv__gallery">
+      <div class="qv__stage"><img id="qv-stage-img" src="${escapeHtml(gallery[0])}" alt="${escapeHtml(listing.title)}" /></div>
+      ${
+        gallery.length > 1
+          ? `<div class="qv__thumbs">${gallery
+              .map(
+                (src, i) =>
+                  `<button type="button" class="${i === 0 ? "is-active" : ""}" data-qv-thumb="${escapeHtml(src)}" aria-label="View image ${i + 1}"><img src="${escapeHtml(src)}" alt="" /></button>`,
+              )
+              .join("")}</div>`
+          : ""
+      }
+    </div>
+    <div class="qv__info">
+      <p class="qv__crumbs">Home / ${escapeHtml(listing.category)} / ${escapeHtml(listing.brand)}</p>
+      <h2 class="qv__title" id="qv-title">${escapeHtml(listing.title)}</h2>
+      <div class="qv__price">
+        <strong>${escapeHtml(money(listing.price))}</strong>
+        ${listing.retailPrice > listing.price ? `<s>${escapeHtml(money(listing.retailPrice))}</s>` : ""}
+        ${discount ? `<span class="qv__off">${discount}% off retail</span>` : ""}
+      </div>
+      <div class="qv__facts">
+        ${facts.map(([k, v]) => `<span><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</span>`).join("")}
+      </div>
+      <p class="qv__desc">${escapeHtml(listing.description)}</p>
+      <div class="qv__seller">
+        <span class="seller-av">${escapeHtml(initials(listing.sellerName))}</span>
+        <span class="listing-seller__meta" style="flex:1">
+          <strong>${escapeHtml(listing.sellerName)}${verified ? `<span class="verified-badge">${icons.verified} Verified</span>` : ""}</strong>
+          <span>${escapeHtml(seller?.city || listing.location || "Pakistan")} · ${followerCount(seller || { trustScore: 70 }).toLocaleString()} followers</span>
+        </span>
+        <button class="button secondary sm" type="button" data-closet-seller="${escapeHtml(listing.sellerName)}">Visit closet</button>
+      </div>
+      <div class="qv__trust">
+        <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg> Cash on Delivery — pay when it arrives</div>
+        <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg> Buyer Protection · QC checked before dispatch</div>
+        <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg> TCS &amp; Leopards delivery nationwide</div>
+      </div>
+      <div class="qv__cta">
+        <button class="button primary" type="button" data-qv-buy="${escapeHtml(listing.id)}" ${availability.locked ? "disabled" : ""}>${availability.locked ? escapeHtml(availability.label) : "Request (COD)"}</button>
+        <a class="button wa-btn" href="${whatsappLink(seller, listing)}" target="_blank" rel="noopener">${icons.whatsapp} WhatsApp</a>
+      </div>
+      <button class="button secondary" style="width:100%;justify-content:center" type="button" data-toggle-save="${escapeHtml(listing.id)}">${icons.heart(saved)} ${saved ? "Saved to closet" : "Save to closet"}</button>
+    </div>`;
+
+  lastFocusedEl = document.activeElement;
+  dom.quickview.hidden = false;
+  document.body.style.overflow = "hidden";
+  dom.quickview.querySelector(".modal__close")?.focus();
+}
+
+function closeQuickView() {
+  if (dom.quickview.hidden) return;
+  dom.quickview.hidden = true;
+  document.body.style.overflow = "";
+  if (lastFocusedEl && typeof lastFocusedEl.focus === "function") lastFocusedEl.focus();
+}
+
 function renderAll() {
+  renderHome();
   renderCounts();
   renderMarketPulse();
   renderSessionSummary();
@@ -1569,58 +1926,44 @@ dom.categoryButtons.forEach((button) => {
   });
 });
 
-dom.signupForm.addEventListener("submit", (event) => {
+dom.signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(dom.signupForm);
-  const email = normalizeEmail(form.get("email"));
-  const password = String(form.get("password") || "");
-
-  if (state.accounts.some((account) => account.email === email)) {
-    showToast("An account already exists for this email.");
-    switchAuthMode("login");
-    dom.loginForm.elements.email.value = email;
-    return;
-  }
-
-  const account = {
-    id: makeId("acct"),
-    name: String(form.get("name") || "").trim(),
-    email,
-    passwordHash: hashPassword(password),
-    role: String(form.get("role") || "buyer"),
-    phone: String(form.get("phone") || "").trim(),
-    city: String(form.get("city") || "").trim() || "Pakistan",
-    handle: handleFromName(form.get("name") || email),
-    trustScore: 78,
-    savedListingIds: [],
-    createdAt: new Date().toISOString(),
+  const payload = {
+    name: form.get("name"),
+    email: form.get("email"),
+    password: form.get("password"),
+    role: form.get("role"),
+    phone: form.get("phone"),
+    city: form.get("city"),
   };
-
-  state.accounts.push(account);
-  state.currentUserId = account.id;
-  addEvent("account", `${account.name} created a ${account.role} account.`, account.id);
-  dom.signupForm.reset();
-  saveState();
-  renderAll();
-  showToast(`${account.name} is active.`);
+  try {
+    const { token, account } = await API.signup(payload);
+    API.setToken(token);
+    dom.signupForm.reset();
+    await refresh();
+    showToast(`Welcome to Bechdou, ${account.name}.`);
+  } catch (error) {
+    showToast(error.message);
+    if (error.status === 409) {
+      switchAuthMode("login");
+      dom.loginForm.elements.email.value = String(payload.email || "");
+    }
+  }
 });
 
-dom.loginForm.addEventListener("submit", (event) => {
+dom.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(dom.loginForm);
-  const email = normalizeEmail(form.get("email"));
-  const account = state.accounts.find((item) => item.email === email);
-
-  if (!passwordMatches(account, form.get("password"))) {
-    showToast("Email or password did not match.");
-    return;
+  try {
+    const { token, account } = await API.login({ email: form.get("email"), password: form.get("password") });
+    API.setToken(token);
+    dom.loginForm.reset();
+    await refresh();
+    showToast(`Welcome back, ${account.name}.`);
+  } catch (error) {
+    showToast(error.message);
   }
-
-  state.currentUserId = account.id;
-  dom.loginForm.reset();
-  saveState();
-  renderAll();
-  showToast(`Welcome back, ${account.name}.`);
 });
 
 dom.imageFile.addEventListener("change", (event) => {
@@ -1645,127 +1988,99 @@ dom.imageFile.addEventListener("change", (event) => {
 dom.listingForm.addEventListener("input", renderListingAssistant);
 dom.listingForm.addEventListener("change", renderListingAssistant);
 
-dom.listingForm.addEventListener("submit", (event) => {
+dom.listingForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const account = activeAccount();
 
   if (!canSell(account)) {
-    showToast("Log in with a seller account first.");
+    showToast(account ? "Switch to a seller account to list." : "Log in as a seller first.");
+    switchView("pulse");
     switchAuthMode(account ? "signup" : "login");
     return;
   }
 
   const form = new FormData(dom.listingForm);
   const imageUrl = String(form.get("imageUrl") || "").trim();
-  const listing = {
-    id: makeId("lst"),
-    title: String(form.get("title") || "").trim(),
-    brand: String(form.get("brand") || "").trim() || "Unbranded",
+  const payload = {
+    title: form.get("title"),
+    brand: form.get("brand"),
     price: Number(form.get("price")),
     retailPrice: Number(form.get("retailPrice") || form.get("price")),
     category: form.get("category"),
-    size: String(form.get("size") || "").trim() || "One size",
+    size: form.get("size"),
     condition: form.get("condition"),
-    location: String(form.get("location") || "").trim() || account.city || "Pakistan",
-    color: String(form.get("color") || "").trim(),
-    fabric: String(form.get("fabric") || "").trim(),
-    measurements: String(form.get("measurements") || "").trim(),
-    flaws: String(form.get("flaws") || "").trim() || "None listed",
-    sellerId: account.id,
-    sellerName: account.name,
-    description: String(form.get("description") || "").trim(),
-    image: uploadedImageData || imageUrl || FALLBACK_IMAGE,
-    status: "pending",
+    location: form.get("location"),
+    color: form.get("color"),
+    fabric: form.get("fabric"),
+    measurements: form.get("measurements"),
+    flaws: form.get("flaws"),
+    description: form.get("description"),
+    image: uploadedImageData || imageUrl || undefined,
     qualityChecks: {
       frontPhoto: form.get("hasFrontPhoto") === "on",
       backPhoto: form.get("hasBackPhoto") === "on",
       labelPhoto: form.get("hasLabelPhoto") === "on",
       measurements: form.get("hasMeasurements") === "on" || Boolean(String(form.get("measurements") || "").trim()),
     },
-    views: 0,
-    savedBy: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
-  listing.qualityScore = listingQualityScore(listing);
 
-  state.listings.unshift(listing);
-  uploadedImageData = "";
-  addEvent("listing", `${listing.title} submitted for admin review.`, listing.id);
-  dom.listingForm.reset();
-  dom.imagePreview.innerHTML = "<span>No image selected</span>";
-  saveState();
-  renderAll();
-  switchView("admin");
-  showToast("Listing submitted for approval.");
+  try {
+    await API.createListing(payload);
+    uploadedImageData = "";
+    dom.listingForm.reset();
+    dom.imagePreview.innerHTML = "<span>No image selected</span>";
+    await refresh();
+    switchView("sell");
+    showToast("Listing submitted for approval.");
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
-dom.orderForm.addEventListener("submit", (event) => {
+dom.orderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const listing = listingById(state.selectedListingId);
   const account = activeAccount();
 
   if (!account) {
     showToast("Log in or create an account first.");
+    switchView("pulse");
     switchAuthMode("login");
     return;
   }
-
   if (!listing) {
     showToast("Select an approved item first.");
     return;
   }
-
   const availability = listingAvailability(listing.id);
   if (availability.locked) {
     showToast(`${listing.title} is ${availability.label.toLowerCase()}.`);
     return;
   }
 
-  const duplicate = state.orders.some(
-    (order) => order.buyerId === account.id && order.listingId === listing.id && order.status !== "Cancelled",
-  );
-  if (duplicate) {
-    showToast("You already requested this piece.");
-    return;
-  }
-
-  const paymentMethod = dom.orderPaymentMethod.value;
-  const paymentOption = paymentOptionById(paymentMethod);
-
-  if (paymentOption.disabled) {
-    showToast(`${paymentOption.label} is disabled for this prototype.`);
-    return;
-  }
-
-  const order = {
-    id: makeId("ord"),
+  const payload = {
     listingId: listing.id,
-    buyerId: account.id,
     buyerName: dom.orderName.value.trim() || account.name,
     contact: dom.orderContact.value.trim() || account.phone || account.email,
     deliveryCity: dom.orderDeliveryCity.value.trim() || account.city || "",
     note: dom.orderNote.value.trim(),
-    amount: listing.price,
-    paymentMethod,
-    paymentStatus: paymentMethod === "stripe-checkout" ? "Awaiting Stripe" : "Awaiting payment",
+    paymentMethod: dom.orderPaymentMethod.value,
     paymentReference: dom.orderPaymentReference.value.trim(),
-    status: "Requested",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
 
-  state.orders.push(order);
-  state.selectedListingId = "";
-  addEvent("order", `${account.name} requested checkout for ${listing.title}.`, order.id);
-  dom.orderForm.reset();
-  saveState();
-  renderAll();
-  switchView("pulse");
-  showToast("Checkout request sent to admin.");
+  try {
+    await API.createOrder(payload);
+    state.selectedListingId = "";
+    dom.orderForm.reset();
+    await refresh();
+    switchView("pulse");
+    showToast("Checkout requested — pay Cash on Delivery.");
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
   const requestButton = event.target.closest("[data-request-id]");
   const saveButton = event.target.closest("[data-toggle-save]");
   const approveButton = event.target.closest("[data-approve]");
@@ -1786,104 +2101,79 @@ document.addEventListener("click", (event) => {
       showToast(`${listing.title} is ${availability.label.toLowerCase()}.`);
       return;
     }
-    state.selectedListingId = requestButton.dataset.requestId;
-    saveState();
-    renderRequestPanel();
-    document.querySelector(".request-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-
-  if (saveButton) {
-    const account = activeAccount();
-    if (!account) {
-      showToast("Log in to save pieces.");
+    if (!activeAccount()) {
+      showToast("Log in to request checkout.");
+      switchView("pulse");
       switchAuthMode("login");
       return;
     }
-    const listingId = saveButton.dataset.toggleSave;
-    account.savedListingIds = account.savedListingIds || [];
-    if (account.savedListingIds.includes(listingId)) {
-      account.savedListingIds = account.savedListingIds.filter((id) => id !== listingId);
-      showToast("Removed from saved.");
-    } else {
-      account.savedListingIds.push(listingId);
-      showToast("Saved to closet.");
+    state.selectedListingId = requestButton.dataset.requestId;
+    switchView("browse");
+    renderRequestPanel();
+    requestAnimationFrame(() =>
+      document.querySelector(".request-panel")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+    return;
+  }
+
+  if (saveButton) {
+    if (!activeAccount()) {
+      showToast("Log in to save pieces.");
+      switchView("pulse");
+      switchAuthMode("login");
+      return;
     }
-    saveState();
-    renderAll();
+    try {
+      const { saved } = await API.toggleSave(saveButton.dataset.toggleSave);
+      await refresh();
+      showToast(saved ? "Saved to closet." : "Removed from saved.");
+    } catch (error) {
+      showToast(error.message);
+    }
+    return;
   }
 
   if (approveButton) {
-    const listing = listingById(approveButton.dataset.approve);
-    if (listing && canAdmin()) {
-      listing.status = "approved";
-      listing.updatedAt = new Date().toISOString();
-      addEvent("listing", `${listing.title} approved for the public drop.`, listing.id);
-      saveState();
-      renderAll();
+    try {
+      await API.approveListing(approveButton.dataset.approve);
+      await refresh();
       showToast("Listing approved.");
+    } catch (error) {
+      showToast(error.message);
     }
+    return;
   }
 
   if (rejectButton) {
-    const listing = listingById(rejectButton.dataset.reject);
-    if (listing && canAdmin()) {
-      listing.status = "rejected";
-      listing.updatedAt = new Date().toISOString();
-      addEvent("listing", `${listing.title} rejected from review.`, listing.id);
-      saveState();
-      renderAll();
+    try {
+      await API.rejectListing(rejectButton.dataset.reject);
+      await refresh();
       showToast("Listing rejected.");
+    } catch (error) {
+      showToast(error.message);
     }
+    return;
   }
 
   if (logoutButton) {
-    state.currentUserId = "";
+    API.logout();
     state.selectedListingId = "";
-    saveState();
-    renderAll();
+    await refresh();
     switchAuthMode("login");
+    switchView("home");
     showToast("Logged out.");
+    return;
   }
 
-  if (markPaidButton) {
-    updateOrder(markPaidButton.dataset.markPaid, (order) => {
-      order.paymentStatus = "Paid";
-      order.status = "Payment received";
-      return "Payment marked as paid.";
-    });
-  }
-
-  if (qcPassButton) {
-    updateOrder(qcPassButton.dataset.qcPass, (order) => {
-      order.status = "QC passed";
-      return "QC passed.";
-    });
-  }
-
-  if (dispatchButton) {
-    updateOrder(dispatchButton.dataset.dispatch, (order) => {
-      order.status = "Dispatched";
-      return "Order dispatched.";
-    });
-  }
-
-  if (markDeliveredButton) {
-    updateOrder(markDeliveredButton.dataset.markDelivered, (order) => {
-      order.status = "Delivered";
-      return "Order marked delivered.";
-    });
-  }
-
-  if (cancelOrderButton) {
-    updateOrder(cancelOrderButton.dataset.cancelOrder, (order) => {
-      order.status = "Cancelled";
-      if (order.paymentStatus !== "Paid") order.paymentStatus = "Cancelled";
-      return "Order cancelled.";
-    });
-  }
+  if (markPaidButton) return runOrderAction(markPaidButton.dataset.markPaid, "paid", "Payment marked as paid.");
+  if (qcPassButton) return runOrderAction(qcPassButton.dataset.qcPass, "qc", "QC passed.");
+  if (dispatchButton) return runOrderAction(dispatchButton.dataset.dispatch, "dispatch", "Order dispatched.");
+  if (markDeliveredButton) return runOrderAction(markDeliveredButton.dataset.markDelivered, "delivered", "Order delivered.");
+  if (cancelOrderButton) return runOrderAction(cancelOrderButton.dataset.cancelOrder, "cancel", "Order cancelled.");
 
   if (viewShortcut) {
     switchView(viewShortcut.dataset.viewShortcut);
+    return;
   }
 
   if (savedFilterButton) {
@@ -1894,29 +2184,30 @@ document.addEventListener("click", (event) => {
   }
 });
 
-function updateOrder(orderId, updater) {
-  const order = orderById(orderId);
-  if (!order || !canAdmin()) return;
-  const message = updater(order);
-  order.updatedAt = new Date().toISOString();
-  const listing = listingById(order.listingId);
-  addEvent("order", `${message} ${listing?.title || "Order"}`, order.id);
-  saveState();
-  renderAll();
-  showToast(message);
+async function runOrderAction(orderId, action, message) {
+  try {
+    await API.orderAction(orderId, action);
+    await refresh();
+    showToast(message);
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 document.addEventListener("change", (event) => {
   if (!event.target.matches("[data-account-switch]")) return;
-  state.currentUserId = event.target.value;
-  state.selectedListingId = "";
-  saveState();
-  renderAll();
-  showToast(`${activeAccount()?.name || "Account"} is active.`);
+  // Real authentication is in place — admins cannot impersonate other users.
+  event.target.value = state.currentUserId;
+  showToast("Switch accounts by logging in with their email and password.");
 });
 
-dom.resetDemo.addEventListener("click", () => {
-  state = structuredClone(seedState);
+dom.resetDemo.addEventListener("click", async () => {
+  try {
+    await API.reset();
+  } catch (error) {
+    showToast(error.status === 403 ? "Log in as admin (admin@bechdou.pk) to reset." : error.message);
+    return;
+  }
   filters = {
     category: "all",
     search: "",
@@ -1938,15 +2229,226 @@ dom.resetDemo.addEventListener("click", () => {
   });
   dom.orderForm.reset();
   dom.listingForm.reset();
-  dom.signupForm.reset();
-  dom.loginForm.reset();
   dom.imagePreview.innerHTML = "<span>No image selected</span>";
-  saveState();
-  renderAll();
-  switchAuthMode("signup");
-  switchView("pulse");
-  showToast("Demo reset.");
+  homeReady = false;
+  await refresh();
+  switchView("home");
+  showToast("Demo data reset to seed.");
 });
 
-renderPaymentMethodOptions();
-renderAll();
+/* =====================================================================
+   STOREFRONT INTERACTIONS — quick view, share, filters, PWA, reveals
+   ===================================================================== */
+
+function applyBrowse(next = {}) {
+  filters = {
+    category: "all",
+    search: "",
+    city: "all",
+    condition: "all",
+    minPrice: "",
+    maxPrice: "",
+    sort: filters.sort || "newest",
+    savedOnly: false,
+    ...next,
+  };
+  dom.searchInput.value = next.search || "";
+  dom.filterMinPrice.value = next.minPrice || "";
+  dom.filterMaxPrice.value = next.maxPrice || "";
+  dom.filterCity.value = "all";
+  dom.filterCondition.value = "all";
+  dom.filterSaved.checked = false;
+  dom.categoryButtons.forEach((button) => {
+    button.classList.toggle("is-active", (button.dataset.category || "all") === (next.category || "all"));
+  });
+  closeQuickView();
+  switchView("browse");
+  renderBrowse();
+}
+
+function shareListing(listingId) {
+  const listing = listingById(listingId);
+  if (!listing) return;
+  const url = location.href.split("#")[0];
+  const text = `${listing.title} — ${money(listing.price)} on Bechdou`;
+  if (navigator.share) {
+    navigator.share({ title: "Bechdou", text, url }).catch(() => {});
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, "_blank", "noopener");
+    showToast("Sharing to WhatsApp.");
+  }
+}
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest("[data-modal-close]")) {
+    closeQuickView();
+    return;
+  }
+
+  const shareEl = event.target.closest("[data-share]");
+  if (shareEl) {
+    shareListing(shareEl.dataset.share);
+    return;
+  }
+
+  const qvBuy = event.target.closest("[data-qv-buy]");
+  if (qvBuy) {
+    const listing = listingById(qvBuy.dataset.qvBuy);
+    if (!listing || listingAvailability(listing.id).locked) return;
+    state.selectedListingId = listing.id;
+    saveState();
+    closeQuickView();
+    switchView("browse");
+    renderRequestPanel();
+    requestAnimationFrame(() => {
+      document.querySelector(".request-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    showToast(`${listing.title} added to checkout.`);
+    return;
+  }
+
+  const qvThumb = event.target.closest("[data-qv-thumb]");
+  if (qvThumb) {
+    const stage = document.getElementById("qv-stage-img");
+    if (stage) stage.src = qvThumb.dataset.qvThumb;
+    dom.qvBody
+      .querySelectorAll("[data-qv-thumb]")
+      .forEach((button) => button.classList.toggle("is-active", button === qvThumb));
+    return;
+  }
+
+  const closetEl = event.target.closest("[data-closet-seller]");
+  if (closetEl) {
+    applyBrowse({ search: closetEl.dataset.closetSeller });
+    showToast(`Browsing ${closetEl.dataset.closetSeller}'s closet.`);
+    return;
+  }
+
+  const followEl = event.target.closest("[data-follow-seller]");
+  if (followEl) {
+    showToast(`You're now following ${followEl.dataset.followSeller}.`);
+    return;
+  }
+
+  const collectionEl = event.target.closest("[data-collection]");
+  if (collectionEl) {
+    const map = {
+      budget: { maxPrice: "2000" },
+      merlot: { search: "merlot" },
+      neutral: { search: "cream" },
+    };
+    applyBrowse(map[collectionEl.dataset.collection] || {});
+    return;
+  }
+
+  const categoryJump = event.target.closest("[data-category-jump]");
+  if (categoryJump) {
+    applyBrowse({ category: categoryJump.dataset.categoryJump });
+    return;
+  }
+
+  // Open quick view last, but never when an inner action button was clicked
+  const quickviewEl = event.target.closest("[data-quickview]");
+  if (quickviewEl && !event.target.closest("[data-toggle-save],[data-request-id]")) {
+    openQuickView(quickviewEl.dataset.quickview);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeQuickView();
+    return;
+  }
+  if (event.key === "Enter" || event.key === " ") {
+    const media = event.target.closest?.("[data-quickview]");
+    if (media && media.getAttribute("role") === "button") {
+      event.preventDefault();
+      openQuickView(media.dataset.quickview);
+    }
+  }
+});
+
+/* ---------- Scroll reveal ---------- */
+function initScrollReveal() {
+  const els = document.querySelectorAll(".reveal");
+  if (!("IntersectionObserver" in window)) {
+    els.forEach((el) => el.classList.add("is-visible"));
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+  );
+  els.forEach((el) => observer.observe(el));
+}
+
+/* ---------- PWA install ---------- */
+let deferredPrompt = null;
+
+function showInstallBanner() {
+  if (localStorage.getItem("bechdou-install-dismissed") === "1") return;
+  if (window.matchMedia("(display-mode: standalone)").matches) return;
+  dom.installBanner.hidden = false;
+  requestAnimationFrame(() => dom.installBanner.classList.add("is-visible"));
+}
+
+function hideInstallBanner() {
+  dom.installBanner.classList.remove("is-visible");
+  setTimeout(() => {
+    dom.installBanner.hidden = true;
+  }, 320);
+}
+
+async function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    hideInstallBanner();
+    showToast(choice.outcome === "accepted" ? "Installing Bechdou…" : "Install anytime from the menu.");
+  } else {
+    showToast("Open your browser menu → Add to Home Screen.");
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredPrompt = event;
+  dom.heroInstall.hidden = false;
+  showInstallBanner();
+});
+
+window.addEventListener("appinstalled", () => {
+  hideInstallBanner();
+  showToast("Bechdou added to your homescreen.");
+});
+
+dom.installAccept.addEventListener("click", triggerInstall);
+dom.heroInstall.addEventListener("click", triggerInstall);
+dom.installDismiss.addEventListener("click", () => {
+  localStorage.setItem("bechdou-install-dismissed", "1");
+  hideInstallBanner();
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+
+/* ---------- Init ---------- */
+boot();
+dom.heroInstall.hidden = false;
+initScrollReveal();
+// Surface the designed install banner once for first-time visitors even if the
+// native beforeinstallprompt is slow/unavailable (e.g. iOS, desktop).
+setTimeout(() => {
+  if (!deferredPrompt) showInstallBanner();
+}, 4000);
