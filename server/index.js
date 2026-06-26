@@ -10,7 +10,7 @@ import {
   seedIfEmpty, reseed,
   getAccountById, getAccountRowByEmail, createAccount, listAccountsFull, publicSellerProfiles,
   listingsForViewer, approvedListings, getListingById, createListing, setListingStatus, incrementViews, toggleSave,
-  createOrder, ordersForViewer, updateOrder,
+  createOrder, ordersForViewer, updateOrder, updateOrderByReference,
   addEvent, listEvents, marketStatus,
 } from "./db.js";
 
@@ -22,8 +22,8 @@ const PORT = process.env.PORT || 4000;
 const COMMISSION_RATE = 0.15;
 const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
 const paymentOptions = [
-  { id: "stripe-checkout", label: "Stripe Checkout", status: "Payment core", note: "Hosted Stripe payment page for buyer checkout; card data never touches Bechdou servers.", disabled: false },
-  { id: "stripe-shipping", label: "Stripe shipping rates", status: "Delivery fee", note: "Checkout can collect shipping address and shipping rates; Bechdou still owns courier fulfillment.", disabled: true, checkout: false },
+  { id: "stripe-checkout", label: "Stripe Checkout", status: "Card payment", note: "Hosted Stripe payment page; card data never touches Bechdou servers. Requires STRIPE_SECRET_KEY.", disabled: false },
+  { id: "stripe-shipping", label: "Stripe shipping rates", status: "Delivery fee", note: "Checkout can collect shipping address and rates; Bechdou still owns courier fulfillment.", disabled: true, checkout: false },
   { id: "stripe-connect", label: "Stripe Connect", status: "Payouts", note: "Marketplace pattern for seller onboarding, application fees, and seller payouts.", disabled: true, checkout: false },
   { id: "manual-admin", label: "Admin assisted checkout", status: "Fallback", note: "Temporary admin-created order route if a buyer cannot complete Stripe checkout.", disabled: false },
   { id: "cash-on-delivery", label: "Cash on Delivery", status: "Recommended", note: "Buyer pays the courier in cash on delivery — the default across Pakistan.", disabled: false },
@@ -34,6 +34,54 @@ fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 seedIfEmpty();
 
 const app = express();
+
+/* ---------- Stripe (lazy async init — only loads when STRIPE_SECRET_KEY is set) ---------- */
+let _stripe = null;
+async function stripe() {
+  if (_stripe) return _stripe;
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  const { default: Stripe } = await import("stripe");
+  _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  return _stripe;
+}
+
+/* =====================================================================
+   STRIPE WEBHOOK — must be registered BEFORE express.json() so that the
+   raw body is available for signature verification.
+   ===================================================================== */
+app.post("/api/webhooks/stripe", express.raw({ type: "*/*" }), async (req, res) => {
+  const client = await stripe();
+  if (!client) return res.status(503).json({ error: "Stripe not configured." });
+
+  let event;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    try {
+      event = client.webhooks.constructEvent(req.body, req.headers["stripe-signature"], webhookSecret);
+    } catch (err) {
+      return res.status(400).json({ error: `Webhook signature error: ${err.message}` });
+    }
+  } else {
+    try {
+      event = JSON.parse(req.body.toString());
+    } catch {
+      return res.status(400).json({ error: "Invalid JSON body." });
+    }
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const order = updateOrderByReference(session.id, {
+      status: "Payment received",
+      payment_status: "Paid",
+    });
+    if (order) addEvent("payment", `Stripe payment confirmed — session ${session.id.slice(-8)}.`, null, order.id);
+  }
+
+  res.json({ received: true });
+});
+
+/* ---------- Global JSON body parser (after webhook raw route) ---------- */
 app.use(express.json({ limit: "12mb" }));
 
 /* ---------- Auth middleware ---------- */
@@ -70,12 +118,14 @@ function persistImage(image, id) {
   return `/uploads/${file}`;
 }
 
+/* ---------- Async route wrapper (handles both sync and async handlers) ---------- */
 const asyncRoute = (fn) => (req, res) => {
-  try {
-    fn(req, res);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Something went wrong." });
+  const result = fn(req, res);
+  if (result && typeof result.catch === "function") {
+    result.catch((error) => {
+      console.error(error);
+      if (!res.headersSent) res.status(500).json({ error: "Something went wrong." });
+    });
   }
 };
 
@@ -174,6 +224,70 @@ app.post("/api/listings/:id/save", requireAuth, asyncRoute((req, res) => {
 }));
 
 /* =====================================================================
+   STRIPE CHECKOUT
+   ===================================================================== */
+app.post("/api/checkout/stripe", requireAuth, asyncRoute(async (req, res) => {
+  const client = await stripe();
+  if (!client) {
+    return res.status(503).json({
+      error: "Stripe is not configured on this server. Set STRIPE_SECRET_KEY and restart.",
+    });
+  }
+
+  const { listingId, buyerName, contact, deliveryCity, note } = req.body || {};
+  const listing = getListingById(listingId);
+  if (!listing) return res.status(404).json({ error: "Listing not found." });
+  if (listing.status !== "approved") return res.status(400).json({ error: "This piece is not available." });
+
+  // Default to PKR. Set STRIPE_CURRENCY=usd for testing with a US Stripe account.
+  const currency = (process.env.STRIPE_CURRENCY || "pkr").toLowerCase();
+  // Stripe amounts are in the smallest currency unit (paise for PKR, cents for USD).
+  const unitAmount = Math.round(listing.price * 100);
+
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const session = await client.checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card"],
+    line_items: [{
+      price_data: {
+        currency,
+        product_data: {
+          name: listing.title,
+          description: listing.description || undefined,
+        },
+        unit_amount: unitAmount,
+      },
+      quantity: 1,
+    }],
+    success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/#browse`,
+    metadata: { listingId, buyerId: req.account.id },
+  });
+
+  const order = createOrder({
+    listingId,
+    buyerId: req.account.id,
+    buyerName: buyerName || req.account.name,
+    contact: contact || req.account.phone || "",
+    deliveryCity: deliveryCity || req.account.city || "",
+    note: note || "",
+    amount: listing.price,
+    paymentMethod: "stripe-checkout",
+    paymentStatus: "Awaiting Stripe",
+    paymentReference: session.id,
+    status: "Requested",
+  });
+
+  addEvent("order", `Stripe checkout started for ${listing.title}.`, req.account.id, order.id);
+  res.json({ url: session.url, orderId: order.id });
+}));
+
+/* Stripe-hosted checkout success redirect — bring the buyer back into the SPA. */
+app.get("/checkout/success", (_req, res) => {
+  res.redirect("/#checkout-success");
+});
+
+/* =====================================================================
    ORDERS
    ===================================================================== */
 app.post("/api/orders", requireAuth, asyncRoute((req, res) => {
@@ -189,7 +303,7 @@ app.post("/api/orders", requireAuth, asyncRoute((req, res) => {
     contact: data.contact,
     deliveryCity: data.deliveryCity,
     note: data.note,
-    amount: listing.price, // server is authoritative on price
+    amount: listing.price,
     paymentMethod: option ? option.id : "cash-on-delivery",
     paymentStatus: option && option.id.startsWith("stripe") ? "Awaiting Stripe" : "Due on delivery",
     paymentReference: data.paymentReference,

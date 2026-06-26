@@ -64,6 +64,8 @@ const API = (() => {
     createOrder: (payload) => request("POST", "/orders", payload),
     orderAction: (id, action) => request("POST", `/orders/${id}/status`, { action }),
 
+    stripeCheckout: (payload) => request("POST", "/checkout/stripe", payload),
+
     reset: () => request("POST", "/reset"),
   };
 })();

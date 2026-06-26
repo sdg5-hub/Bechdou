@@ -426,6 +426,19 @@ export function updateOrder(id, fields) {
   return getOrderById(id);
 }
 
+export function updateOrderByReference(reference, fields) {
+  const row = db.prepare("SELECT * FROM orders WHERE payment_reference = ?").get(String(reference || ""));
+  if (!row) return null;
+  const updates = [];
+  const params = [];
+  if (fields.status) { updates.push("status = ?"); params.push(fields.status); }
+  if (fields.payment_status) { updates.push("payment_status = ?"); params.push(fields.payment_status); }
+  if (!updates.length) return getOrderById(row.id);
+  params.push(new Date().toISOString(), row.id);
+  db.prepare(`UPDATE orders SET ${updates.join(", ")}, updated_at = ? WHERE id = ?`).run(...params);
+  return getOrderById(row.id);
+}
+
 /* ---------- Events ---------- */
 export function addEvent(type, message, actorId = "", entityId = "") {
   const event = {

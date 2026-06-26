@@ -353,7 +353,12 @@ async function boot() {
   }
   renderPaymentMethodOptions();
   renderAll();
-  switchView("home");
+  // Handle hash routes (e.g. #checkout-success redirect from Stripe).
+  if (window.location.hash && window.location.hash !== "#home") {
+    handleRoute();
+  } else {
+    switchView("home");
+  }
 }
 
 let filters = {
@@ -1246,7 +1251,7 @@ function listingCard(listing) {
       </div>
       <div class="listing-body">
         <div class="listing-title-row">
-          <h3>${escapeHtml(listing.title)}</h3>
+          <h3><a class="listing-title-link" href="#product/${id}">${escapeHtml(listing.title)}</a></h3>
           <span class="price">${escapeHtml(money(listing.price))}</span>
         </div>
         <p class="listing-meta">
@@ -1766,7 +1771,7 @@ function closetCard(seller) {
       </div>
       <div class="closet-actions">
         <button class="button primary" type="button" data-follow-seller="${escapeHtml(seller.name)}">Follow</button>
-        <button class="button secondary" type="button" data-closet-seller="${escapeHtml(seller.name)}">Visit closet</button>
+        <button class="button secondary" type="button" data-open-closet="${escapeHtml(seller.id)}">Visit closet</button>
       </div>
     </article>`;
 }
@@ -1797,6 +1802,203 @@ function renderHomeOutfits() {
     )
     .join("");
 }
+
+/* =====================================================================
+   PRODUCT DETAIL PAGE (#product/<id>)
+   ===================================================================== */
+function renderProductDetail(listingId) {
+  const view = document.getElementById("product-view");
+  const listing = state.listings.find((l) => l.id === listingId && l.status === "approved");
+
+  if (!listing) {
+    view.innerHTML = `
+      <div class="pd-shell">
+        <nav class="pd-back">
+          <button class="link-button" type="button" data-back-nav>← Back</button>
+        </nav>
+        <div class="empty-state">
+          <h3>Piece unavailable</h3>
+          <p>It may have been removed or sold.</p>
+          <button class="button primary" type="button" data-view-target="browse">Browse all</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const seller = accountById(listing.sellerId);
+  const verified = isVerifiedSeller(seller);
+  const availability = listingAvailability(listing.id);
+  const saved = isSaved(listing.id);
+  const discount = discountOf(listing);
+  const quality = listingQualityScore(listing);
+  const related = state.listings
+    .filter((l) => l.status === "approved" && l.id !== listing.id &&
+      (l.category === listing.category || l.sellerId === listing.sellerId))
+    .slice(0, 4);
+
+  const facts = [
+    ["Brand", listing.brand],
+    ["Size", listing.size || "One size"],
+    ["Condition", listing.condition],
+    ["Colour", listing.color],
+    ["Fabric", listing.fabric],
+    ["Measurements", listing.measurements],
+    ["Flaws", listing.flaws],
+    ["City", seller?.city || listing.location],
+  ].filter(([, v]) => v && v !== "Not specified");
+
+  view.innerHTML = `
+    <div class="pd-shell">
+      <nav class="pd-back" aria-label="Navigation">
+        <button class="link-button" type="button" data-back-nav>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
+        <span class="pd-crumb">${escapeHtml(listing.category)} / ${escapeHtml(listing.brand)}</span>
+      </nav>
+
+      <div class="pd-grid">
+        <div class="pd-gallery">
+          <div class="pd-main-img">
+            <img src="${escapeHtml(safeImage(listing.image))}" alt="${escapeHtml(listing.title)}" />
+            ${availability.locked ? `<span class="pd-sold-badge">${escapeHtml(availability.label)}</span>` : ""}
+          </div>
+          ${discount ? `<div class="pd-discount-chip">${discount}% below retail</div>` : ""}
+        </div>
+
+        <div class="pd-info">
+          <p class="pd-seller-line">
+            <span class="seller-av sm">${escapeHtml(initials(listing.sellerName))}</span>
+            <button class="link-button" type="button" data-open-closet="${escapeHtml(listing.sellerId)}">
+              ${escapeHtml(listing.sellerName)}${verified ? `<span class="verified-badge" title="Verified closet">${icons.verified}</span>` : ""}
+            </button>
+          </p>
+          <h1 class="pd-title">${escapeHtml(listing.title)}</h1>
+          <div class="pd-price">
+            <strong>${escapeHtml(money(listing.price))}</strong>
+            ${listing.retailPrice > listing.price ? `<s class="retail">${escapeHtml(money(listing.retailPrice))}</s>` : ""}
+            ${discount ? `<span class="qv__off">${discount}% off retail</span>` : ""}
+          </div>
+          <span class="${statusClass(availability.label)} pd-avail">${escapeHtml(availability.label)}</span>
+
+          <div class="pd-facts">
+            ${facts.map(([k, v]) => `<div class="pd-fact"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></div>`).join("")}
+          </div>
+
+          <p class="pd-description">${escapeHtml(listing.description)}</p>
+
+          <div class="pd-quality">
+            <span class="${statusClass(quality >= 82 ? "Drop-ready" : "Needs polish")}">${quality}% QC score</span>
+            <div class="meter"><span style="width:${quality}%"></span></div>
+          </div>
+
+          <div class="pd-trust">
+            <div><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg> Cash on Delivery — pay when it arrives</div>
+            <div><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg> QC checked before dispatch</div>
+            <div><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg> TCS &amp; Leopards nationwide</div>
+          </div>
+
+          <div class="pd-cta">
+            <button class="button primary lg" type="button" data-request-id="${escapeHtml(listing.id)}" ${availability.locked ? "disabled" : ""}>
+              ${availability.locked ? escapeHtml(availability.label) : "Request (COD)"}
+            </button>
+            <a class="button wa-btn" href="${whatsappLink(seller, listing)}" target="_blank" rel="noopener">${icons.whatsapp} WhatsApp seller</a>
+          </div>
+          <button class="button secondary" style="width:100%;justify-content:center;margin-top:.5rem" type="button" data-toggle-save="${escapeHtml(listing.id)}">
+            ${icons.heart(saved)} ${saved ? "Saved to closet" : "Save to closet"}
+          </button>
+        </div>
+      </div>
+
+      ${related.length ? `
+        <section class="pd-related">
+          <h2>More from this closet &amp; category</h2>
+          <div class="carousel" role="list">${related.map(listingCard).join("")}</div>
+        </section>` : ""}
+    </div>
+  `;
+}
+
+/* =====================================================================
+   SELLER CLOSET PAGE (#closet/<id>)
+   ===================================================================== */
+function renderSellerCloset(sellerId) {
+  const view = document.getElementById("closet-view");
+  const seller = state.accounts.find((a) => a.id === sellerId);
+  const listings = seller ? sellerApprovedListings(sellerId) : [];
+
+  if (!seller) {
+    view.innerHTML = `
+      <div class="pd-shell">
+        <nav class="pd-back">
+          <button class="link-button" type="button" data-back-nav>← Back</button>
+        </nav>
+        <div class="empty-state"><h3>Seller not found</h3></div>
+      </div>`;
+    return;
+  }
+
+  const verified = isVerifiedSeller(seller);
+
+  view.innerHTML = `
+    <div class="pd-shell">
+      <nav class="pd-back" aria-label="Navigation">
+        <button class="link-button" type="button" data-back-nav>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
+      </nav>
+
+      <header class="closet-detail-head">
+        <span class="closet-av lg">${escapeHtml(initials(seller.name))}</span>
+        <div class="closet-detail-meta">
+          <h1>${escapeHtml(seller.name)}${verified ? `<span class="verified-badge" title="Verified closet">${icons.verified} Verified</span>` : ""}</h1>
+          <p>${escapeHtml(seller.handle || "@" + initials(seller.name).toLowerCase())} · ${escapeHtml(seller.city || "Pakistan")}</p>
+          <div class="closet-detail-stats">
+            <div><strong>${listings.length}</strong><span>Pieces</span></div>
+            <div><strong>${followerCount(seller).toLocaleString()}</strong><span>Followers</span></div>
+            <div><strong>${seller.trustScore || 80}%</strong><span>Trust</span></div>
+          </div>
+        </div>
+        <button class="button primary" type="button" data-follow-seller="${escapeHtml(seller.name)}">Follow</button>
+      </header>
+
+      <div class="closet-detail-grid" role="list" aria-label="${escapeHtml(seller.name)}'s closet">
+        ${listings.length ? listings.map(listingCard).join("") : emptyMini("No approved pieces yet")}
+      </div>
+    </div>
+  `;
+}
+
+/* =====================================================================
+   HASH-BASED ROUTING  (#product/<id>  |  #closet/<id>  |  #checkout-success)
+   ===================================================================== */
+function handleRoute() {
+  const hash = window.location.hash;
+  const productMatch = hash.match(/^#product\/([^/]+)$/);
+  const closetMatch = hash.match(/^#closet\/([^/]+)$/);
+
+  if (productMatch) {
+    switchView("product");
+    renderProductDetail(decodeURIComponent(productMatch[1]));
+    return;
+  }
+  if (closetMatch) {
+    switchView("closet");
+    renderSellerCloset(decodeURIComponent(closetMatch[1]));
+    return;
+  }
+  if (hash === "#checkout-success") {
+    window.history.replaceState(null, "", location.pathname);
+    refresh().then(() => {
+      switchView("pulse");
+      showToast("Payment confirmed — your order is on the way.");
+    });
+    return;
+  }
+}
+
+window.addEventListener("hashchange", handleRoute);
 
 /* ---------- QUICK VIEW (product detail) ---------- */
 let lastFocusedEl = null;
@@ -1851,7 +2053,7 @@ function openQuickView(listingId) {
           <strong>${escapeHtml(listing.sellerName)}${verified ? `<span class="verified-badge">${icons.verified} Verified</span>` : ""}</strong>
           <span>${escapeHtml(seller?.city || listing.location || "Pakistan")} · ${followerCount(seller || { trustScore: 70 }).toLocaleString()} followers</span>
         </span>
-        <button class="button secondary sm" type="button" data-closet-seller="${escapeHtml(listing.sellerName)}">Visit closet</button>
+        <button class="button secondary sm" type="button" data-open-closet="${escapeHtml(listing.sellerId)}">Visit closet</button>
       </div>
       <div class="qv__trust">
         <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg> Cash on Delivery — pay when it arrives</div>
@@ -1966,6 +2168,32 @@ dom.loginForm.addEventListener("submit", async (event) => {
   }
 });
 
+/* ---------- Image compression (client-side Canvas resize before upload) ---------- */
+function compressImage(dataUrl, maxPx = 1000, quality = 0.78) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) {
+          height = Math.round(height * (maxPx / width));
+          width = maxPx;
+        } else {
+          width = Math.round(width * (maxPx / height));
+          height = maxPx;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 dom.imageFile.addEventListener("change", (event) => {
   const [file] = event.target.files;
   uploadedImageData = "";
@@ -1977,9 +2205,10 @@ dom.imageFile.addEventListener("change", (event) => {
   }
 
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    uploadedImageData = reader.result;
-    dom.imagePreview.innerHTML = `<img src="${escapeHtml(uploadedImageData)}" alt="Selected listing preview" />`;
+  reader.addEventListener("load", async () => {
+    const compressed = await compressImage(reader.result);
+    uploadedImageData = compressed;
+    dom.imagePreview.innerHTML = `<img src="${escapeHtml(compressed)}" alt="Selected listing preview" />`;
     renderListingAssistant();
   });
   reader.readAsDataURL(file);
@@ -2058,12 +2287,29 @@ dom.orderForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const payload = {
+  const buyerPayload = {
     listingId: listing.id,
     buyerName: dom.orderName.value.trim() || account.name,
     contact: dom.orderContact.value.trim() || account.phone || account.email,
     deliveryCity: dom.orderDeliveryCity.value.trim() || account.city || "",
     note: dom.orderNote.value.trim(),
+  };
+
+  // Stripe Checkout — redirect to hosted payment page.
+  if (dom.orderPaymentMethod.value === "stripe-checkout") {
+    try {
+      const { url } = await API.stripeCheckout(buyerPayload);
+      window.location.href = url;
+    } catch (error) {
+      showToast(error.message.includes("not configured")
+        ? "Stripe is not set up on this server — use Cash on Delivery instead."
+        : error.message);
+    }
+    return;
+  }
+
+  const payload = {
+    ...buyerPayload,
     paymentMethod: dom.orderPaymentMethod.value,
     paymentReference: dom.orderPaymentReference.value.trim(),
   };
@@ -2317,10 +2563,27 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const openClosetEl = event.target.closest("[data-open-closet]");
+  if (openClosetEl) {
+    closeQuickView();
+    window.location.hash = `#closet/${openClosetEl.dataset.openCloset}`;
+    return;
+  }
+
   const closetEl = event.target.closest("[data-closet-seller]");
   if (closetEl) {
     applyBrowse({ search: closetEl.dataset.closetSeller });
     showToast(`Browsing ${closetEl.dataset.closetSeller}'s closet.`);
+    return;
+  }
+
+  const backNavEl = event.target.closest("[data-back-nav]");
+  if (backNavEl) {
+    if (history.length > 1) {
+      history.back();
+    } else {
+      switchView("browse");
+    }
     return;
   }
 
