@@ -1,114 +1,173 @@
-# Bechdou Marketplace OS
+# Bechdou — Pakistan's fashion resale marketplace
 
-Bechdou is an elevated fashion resale marketplace prototype for proving the core platform loop before building the production backend.
+A full-stack, community resale marketplace for preloved fashion, tuned for
+Pakistan's mobile-first, Cash-on-Delivery market. Shop verified seller closets,
+request checkout, and sell the pieces you've outgrown — with admin moderation,
+order operations, and a real REST API behind it.
 
-## Repo
+- **Frontend** — a cinematic, mobile-first storefront (vanilla HTML/CSS/JS, PWA).
+- **Backend** — an Express + SQLite REST API with real auth, roles, listings,
+  orders, and image uploads.
 
-- Local repo: `/Users/osamahgilani/Documents/New project/bechdou-site`
-- GitHub remote: `git@github.com:sdg5-hub/Bechdou.git`
-- Branch: `main`
-- Live files: `index.html`, `styles.css`, `script.js`
+---
 
-## Current Upgrade
+## ✨ Features
 
-- Pulse command view with GMV, first-30-day sell-through, time-to-first-sale, recirculation, activity, and CEO questions.
-- Local demo signup, login, logout, and account switching for buyer, seller, and admin roles.
-- Buyer browse flow with search, category, city, condition, price, sort, saved-only filters, saved listings, and checkout requests.
-- Seller studio with richer listing metadata, image upload/URL, QC checklist, listing score, seller metrics, and payout estimate.
-- Admin desk with role gate, listing approval/rejection, order lifecycle, payment verification, QC pass, dispatch, delivery, cancellation, account table, and ledger.
-- Stripe-first payment model: Stripe Checkout for buyer payment, Stripe Connect for marketplace/seller payouts, and Stripe shipping rates for collecting shipping fees during checkout.
+**Storefront (buyer experience)**
+- Cinematic hero, trending drops, curated collections, shop-by-category
+- Featured **seller closets** with verified badges, followers, trust scores
+- Elevated product cards (seller identity, likes, hover quick-actions, skeletons)
+- Product **quick-view** with image gallery, COD trust, and WhatsApp deep-link
+- Search, filters (city / condition / price / sort) and "saved" closet
+- Installable **PWA** (manifest + service worker + "Add to Homescreen")
+- Mobile sticky bottom nav, scroll-reveal animations, `prefers-reduced-motion`
 
-This is still a static prototype. Auth, password storage, payments, image uploads, authorization, and order persistence are browser-local only.
+**Marketplace engine**
+- **Auth & roles** — buyer / seller / admin, scrypt-hashed passwords, JWT sessions
+- **Sellers** submit listings (with photo upload) for review
+- **Admins** approve / reject listings and run the order desk
+- **Orders** — Cash on Delivery checkout, QC → dispatch → delivered lifecycle
+- **Saves/likes**, marketplace pulse (GMV, metrics), activity feed, audit log
+- Role-scoped data: buyers see their own orders, admins see everything
 
-## Locked CEO Decisions
+---
 
-- Marketplace model: open marketplace where anyone can create a seller account and list clothing.
-- Admin model: admin moderates listings, payments, QC, and order states.
-- First users: broad public/random buyers and sellers, with product designed to make cold users trust the marketplace quickly.
-- Payment model: Stripe handles payment infrastructure through Checkout and marketplace payouts through Connect.
-- Delivery model: Stripe can collect/display shipping options and shipping charges, but Bechdou still needs courier fulfillment, tracking, delivery support, and order state management.
-- North Star Metric: Gross Merchandise Value (GMV) of items bought and sold.
-- Leading indicator: first-30-day listing sell-through rate.
+## 🧱 Tech stack
 
-## KPI Model
+| Layer     | Choice                                                            |
+|-----------|------------------------------------------------------------------|
+| Frontend  | Vanilla HTML / CSS / JS (no build step), PWA                     |
+| Backend   | Node.js + Express                                                |
+| Database  | SQLite via Node's built-in `node:sqlite` (no native compilation) |
+| Auth      | `node:crypto` — scrypt password hashing + HS256 tokens          |
+| Deps      | **`express` is the only npm dependency**                         |
 
-- GMV: total value of completed paid orders.
-- First-30-day listing sell-through: percentage of listed items that sell within 30 days.
-- Time-to-first-sale: how quickly a new seller makes her first sale.
-- Active seller rate: percentage of seller accounts actively listing or managing inventory.
-- Listing velocity: number of unique listings created and shared.
-- Search-to-buy conversion: percentage of browse/search sessions that become completed checkout.
-- Return buyer rate: percentage of buyers with repeat purchases.
-- Session length: time spent browsing, saving, and interacting with the feed.
-- Recirculation rate: apparel volume kept in circulation instead of heading to waste.
+Designed to be dependency-light and easy to run: SQLite, hashing, tokens, and
+image storage all use Node built-ins.
 
-## Demo Accounts
+---
 
-All seeded accounts use:
+## 🚀 Quick start
 
-```text
-bechdou123
-```
-
-```text
-admin@bechdou.pk      admin
-aiza@example.com      seller
-noor@example.com      seller
-mina@example.com      buyer
-```
-
-## Brand Direction
-
-- cream: `#F7F3EE`
-- powder blue: `#A2BCD7`
-- deep merlot: `#6E0F1F`
-- title/display type: Cormorant Garamond
-- accent script: Pinion Script
-- body/product UI: Inter
-
-## Run Locally
+**Prerequisites:** Node.js **22.5+** (for the built-in `node:sqlite` module).
+Check with `node -v`.
 
 ```bash
-python3 -m http.server 8010
+# 1. Install the one backend dependency
+cd server
+npm install
+
+# 2. Start the server (serves the API + the static frontend together)
+npm start
+
+# 3. Open the app
+#    → http://localhost:4000
 ```
 
-Then open:
+That's it. On first run the database (`server/bechdou.db`) is created and seeded
+automatically. The server serves the frontend and the `/api/*` endpoints from the
+same origin, so there is nothing else to start.
 
-```text
-http://127.0.0.1:8010
+> The frontend now talks to the backend, so open it via **http://localhost:4000**
+> — not by double-clicking `index.html` (that has no API to call).
+
+### Demo accounts
+
+All seeded accounts use the password **`bechdou123`**:
+
+| Role   | Email                | Can do                                  |
+|--------|----------------------|-----------------------------------------|
+| Admin  | `admin@bechdou.pk`   | Approve listings, run orders, reset data |
+| Seller | `aiza@example.com`   | List items, manage their closet          |
+| Seller | `noor@example.com`   | List items, manage their closet          |
+| Buyer  | `mina@example.com`   | Browse, save, request COD checkout       |
+
+Log in from the **Account** tab (mobile bottom nav) or the **Pulse / Browse**
+side panel on desktop. Use **Reset** (as admin) to restore the seed data.
+
+---
+
+## 🗂️ Project structure
+
+```
+bechdou-site/
+├── index.html            # Storefront markup (views: Home, Browse, Sell, Pulse, Admin)
+├── styles.css            # Design system + storefront styles (brand palette locked)
+├── script.js             # UI logic + rendering; talks to the API
+├── api.js                # Tiny fetch client (token persistence)
+├── manifest.webmanifest  # PWA manifest
+├── sw.js                 # Service worker (app-shell caching)
+├── assets/               # Images + app icon
+└── server/
+    ├── index.js          # Express app: routes + static serving
+    ├── db.js             # node:sqlite schema, seed, queries
+    ├── auth.js           # scrypt hashing + HS256 tokens
+    ├── package.json      # start script (uses --experimental-sqlite)
+    └── uploads/          # uploaded listing images (runtime)
 ```
 
-## Persistence
+---
 
-The app stores demo marketplace state in browser `localStorage`, including accounts, demo password hashes, saved listings, approvals, checkout requests, payment statuses, and audit events. Use `Reset` to return to seeded demo state.
+## 🔌 API reference
 
-## Production Path
+All responses are JSON. Authenticated requests send `Authorization: Bearer <token>`.
 
-Build the production version as a real app with backend accounts, secure password hashing, sessions, role-based authorization, database persistence, object storage for listing media, Stripe Checkout Session creation, Stripe webhook verification, Stripe Connect seller onboarding/payouts, immutable payment events, seller payout logic, delivery/courier state tracking, and admin-only order state transitions.
+| Method | Endpoint                        | Auth      | Purpose                              |
+|--------|---------------------------------|-----------|--------------------------------------|
+| GET    | `/api/bootstrap`                | optional  | Hydrate the app (role-scoped data)   |
+| POST   | `/api/auth/signup`              | —         | Create account → `{ token, account }`|
+| POST   | `/api/auth/login`               | —         | Log in → `{ token, account }`        |
+| GET    | `/api/auth/me`                  | optional  | Current account                      |
+| GET    | `/api/listings`                 | —         | Approved listings (filter/search)    |
+| GET    | `/api/listings/:id`             | —         | One listing (counts a view)          |
+| POST   | `/api/listings`                 | seller    | Create listing (base64 image upload) |
+| POST   | `/api/listings/:id/approve`     | admin     | Approve a listing                    |
+| POST   | `/api/listings/:id/reject`      | admin     | Reject a listing                     |
+| POST   | `/api/listings/:id/save`        | any user  | Toggle save/like                     |
+| POST   | `/api/orders`                   | any user  | Request COD checkout                 |
+| GET    | `/api/orders`                   | any user  | Orders (scoped by role)              |
+| POST   | `/api/orders/:id/status`        | admin     | `paid` / `qc` / `dispatch` / `delivered` / `cancel` |
+| GET    | `/api/accounts`                 | admin     | All accounts                         |
+| POST   | `/api/reset`                    | admin     | Restore seed data                    |
 
-Do not trust client-side role checks or client-side payment state in production.
+### Example
 
-## Remaining CEO Questions
+```bash
+# Log in and approve a listing
+TOKEN=$(curl -s -X POST localhost:4000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@bechdou.pk","password":"bechdou123"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
 
-- What minimum trust promise is required for random people to buy from random sellers?
-- Does Bechdou hold funds until delivery/QC, or pay sellers immediately after purchase?
-- What is the commission/application-fee model inside Stripe Connect?
-- Does Bechdou own delivery coordination, or does the seller ship directly with Bechdou visibility?
-- What happens when an item is fake, damaged, late, lost, or materially different from the listing?
-- What is the exact definition of sold for sell-through: paid, dispatched, delivered, or non-refunded after a window?
-- Which product interventions improve 30-day sell-through fastest: pricing suggestions, boosted listings, photo QC, seller coaching, or buyer personalization?
-- Which categories should be blocked or restricted in the open marketplace until trust systems mature?
-- What is the target first-30-day sell-through rate for launch, month 3, and month 6?
-- How will Bechdou measure circularity in a way that is credible enough for brand and investor storytelling?
-
-## CEO-Level Prompt
-
-```text
-You are advising the CEO and founding engineering team of Bechdou, an open fashion resale marketplace where anyone can sell clothes, with admin moderation for trust and Stripe as the payment infrastructure. Review the current prototype scope: buyer/seller/admin login, open seller onboarding, listing upload, admin approval, saved listings, Stripe-style checkout requests, Stripe Connect payout planning, QC, dispatch, delivery states, seller metrics, admin ledger, and marketplace pulse metrics.
-
-Produce a CEO-level product and engineering upgrade plan. Optimize for Bechdou's North Star Metric, GMV, and its key leading indicator, first-30-day listing sell-through rate. Prioritize market validation, trust for random buyers/sellers, liquidity, Stripe Checkout, Stripe Connect seller payouts, delivery operations, monetisation, circularity, and operational leverage. Separate the roadmap into MVP hardening, marketplace growth, payment/checkout infrastructure, seller tooling, buyer trust, admin operations, data/analytics, circularity metrics, and production architecture. Call out what not to build yet. Include the first 10 engineering tickets, the core metrics dashboard, and the riskiest assumptions to validate in the next 30 days.
+curl -s -X POST localhost:4000/api/listings/lst-pending-bag/approve \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-## Notes
+---
 
-`script 2.js` is an older duplicate and is not loaded by `index.html`.
+## ⚙️ Configuration
+
+Environment variables (all optional):
+
+| Variable          | Default                | Notes                            |
+|-------------------|------------------------|----------------------------------|
+| `PORT`            | `4000`                 | HTTP port                        |
+| `BECHDOU_SECRET`  | dev secret             | **Set this in production** (signs tokens) |
+| `BECHDOU_DB`      | `server/bechdou.db`    | SQLite file path                 |
+
+To wipe and re-seed, stop the server, delete `server/bechdou.db*`, and restart —
+or just hit **Reset** in the UI as admin.
+
+---
+
+## 📝 Notes & next steps
+
+- **Palette** is intentionally locked to Bechdou's brand tokens (merlot, powder
+  blue, cream); the redesign only uses those colors, their gradients/opacities,
+  and neutrals.
+- **Security:** prototype-grade. Tokens are bearer tokens in `localStorage`; for
+  production prefer httpOnly cookies and set `BECHDOU_SECRET`.
+- **Not a static-only deploy:** the app needs the Node server for the API, so it
+  won't run as a pure GitHub Pages site. Host on any Node platform (Render,
+  Railway, Fly, a VPS, etc.).
+- **Ideas:** dedicated product-detail / seller-closet routes, image compression,
+  Stripe checkout, Urdu/RTL, real PNG PWA icons.

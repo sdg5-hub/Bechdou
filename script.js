@@ -3,7 +3,7 @@ const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
 const DEMO_PASSWORD = "bechdou123";
 const COMMISSION_RATE = 0.15;
 
-const paymentOptions = [
+let paymentOptions = [
   {
     id: "stripe-checkout",
     label: "Stripe Checkout",
@@ -312,7 +312,50 @@ const seedState = {
   selectedListingId: "",
 };
 
-let state = loadState();
+// State is hydrated from the backend (/api/bootstrap) — no longer localStorage.
+let state = {
+  accounts: [],
+  currentUserId: "",
+  listings: [],
+  orders: [],
+  auditLog: [],
+  selectedListingId: "",
+  account: null,
+  marketStatus: { reserved: [], sold: [] },
+};
+
+function applyBootstrap(data) {
+  state = {
+    accounts: data.accounts || [],
+    currentUserId: data.account?.id || "",
+    listings: data.listings || [],
+    orders: data.orders || [],
+    auditLog: data.events || [],
+    selectedListingId: state.selectedListingId || "",
+    account: data.account || null,
+    marketStatus: data.marketStatus || { reserved: [], sold: [] },
+  };
+  if (Array.isArray(data.paymentOptions) && data.paymentOptions.length) {
+    paymentOptions = data.paymentOptions;
+  }
+}
+
+async function refresh() {
+  applyBootstrap(await API.bootstrap());
+  renderAll();
+}
+
+async function boot() {
+  try {
+    applyBootstrap(await API.bootstrap());
+  } catch (error) {
+    showToast(error.message || "Could not reach the Bechdou server.");
+  }
+  renderPaymentMethodOptions();
+  renderAll();
+  switchView("home");
+}
+
 let filters = {
   category: "all",
   search: "",
@@ -587,8 +630,8 @@ function syncListingSaves(sourceState = state) {
 }
 
 function saveState() {
-  syncListingSaves();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // No-op: the backend is the source of truth. Kept so legacy call sites that
+  // only mutate transient UI state (e.g. selectedListingId) stay harmless.
 }
 
 function makeId(prefix) {
@@ -1883,58 +1926,44 @@ dom.categoryButtons.forEach((button) => {
   });
 });
 
-dom.signupForm.addEventListener("submit", (event) => {
+dom.signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(dom.signupForm);
-  const email = normalizeEmail(form.get("email"));
-  const password = String(form.get("password") || "");
-
-  if (state.accounts.some((account) => account.email === email)) {
-    showToast("An account already exists for this email.");
-    switchAuthMode("login");
-    dom.loginForm.elements.email.value = email;
-    return;
-  }
-
-  const account = {
-    id: makeId("acct"),
-    name: String(form.get("name") || "").trim(),
-    email,
-    passwordHash: hashPassword(password),
-    role: String(form.get("role") || "buyer"),
-    phone: String(form.get("phone") || "").trim(),
-    city: String(form.get("city") || "").trim() || "Pakistan",
-    handle: handleFromName(form.get("name") || email),
-    trustScore: 78,
-    savedListingIds: [],
-    createdAt: new Date().toISOString(),
+  const payload = {
+    name: form.get("name"),
+    email: form.get("email"),
+    password: form.get("password"),
+    role: form.get("role"),
+    phone: form.get("phone"),
+    city: form.get("city"),
   };
-
-  state.accounts.push(account);
-  state.currentUserId = account.id;
-  addEvent("account", `${account.name} created a ${account.role} account.`, account.id);
-  dom.signupForm.reset();
-  saveState();
-  renderAll();
-  showToast(`${account.name} is active.`);
+  try {
+    const { token, account } = await API.signup(payload);
+    API.setToken(token);
+    dom.signupForm.reset();
+    await refresh();
+    showToast(`Welcome to Bechdou, ${account.name}.`);
+  } catch (error) {
+    showToast(error.message);
+    if (error.status === 409) {
+      switchAuthMode("login");
+      dom.loginForm.elements.email.value = String(payload.email || "");
+    }
+  }
 });
 
-dom.loginForm.addEventListener("submit", (event) => {
+dom.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(dom.loginForm);
-  const email = normalizeEmail(form.get("email"));
-  const account = state.accounts.find((item) => item.email === email);
-
-  if (!passwordMatches(account, form.get("password"))) {
-    showToast("Email or password did not match.");
-    return;
+  try {
+    const { token, account } = await API.login({ email: form.get("email"), password: form.get("password") });
+    API.setToken(token);
+    dom.loginForm.reset();
+    await refresh();
+    showToast(`Welcome back, ${account.name}.`);
+  } catch (error) {
+    showToast(error.message);
   }
-
-  state.currentUserId = account.id;
-  dom.loginForm.reset();
-  saveState();
-  renderAll();
-  showToast(`Welcome back, ${account.name}.`);
 });
 
 dom.imageFile.addEventListener("change", (event) => {
@@ -1959,127 +1988,99 @@ dom.imageFile.addEventListener("change", (event) => {
 dom.listingForm.addEventListener("input", renderListingAssistant);
 dom.listingForm.addEventListener("change", renderListingAssistant);
 
-dom.listingForm.addEventListener("submit", (event) => {
+dom.listingForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const account = activeAccount();
 
   if (!canSell(account)) {
-    showToast("Log in with a seller account first.");
+    showToast(account ? "Switch to a seller account to list." : "Log in as a seller first.");
+    switchView("pulse");
     switchAuthMode(account ? "signup" : "login");
     return;
   }
 
   const form = new FormData(dom.listingForm);
   const imageUrl = String(form.get("imageUrl") || "").trim();
-  const listing = {
-    id: makeId("lst"),
-    title: String(form.get("title") || "").trim(),
-    brand: String(form.get("brand") || "").trim() || "Unbranded",
+  const payload = {
+    title: form.get("title"),
+    brand: form.get("brand"),
     price: Number(form.get("price")),
     retailPrice: Number(form.get("retailPrice") || form.get("price")),
     category: form.get("category"),
-    size: String(form.get("size") || "").trim() || "One size",
+    size: form.get("size"),
     condition: form.get("condition"),
-    location: String(form.get("location") || "").trim() || account.city || "Pakistan",
-    color: String(form.get("color") || "").trim(),
-    fabric: String(form.get("fabric") || "").trim(),
-    measurements: String(form.get("measurements") || "").trim(),
-    flaws: String(form.get("flaws") || "").trim() || "None listed",
-    sellerId: account.id,
-    sellerName: account.name,
-    description: String(form.get("description") || "").trim(),
-    image: uploadedImageData || imageUrl || FALLBACK_IMAGE,
-    status: "pending",
+    location: form.get("location"),
+    color: form.get("color"),
+    fabric: form.get("fabric"),
+    measurements: form.get("measurements"),
+    flaws: form.get("flaws"),
+    description: form.get("description"),
+    image: uploadedImageData || imageUrl || undefined,
     qualityChecks: {
       frontPhoto: form.get("hasFrontPhoto") === "on",
       backPhoto: form.get("hasBackPhoto") === "on",
       labelPhoto: form.get("hasLabelPhoto") === "on",
       measurements: form.get("hasMeasurements") === "on" || Boolean(String(form.get("measurements") || "").trim()),
     },
-    views: 0,
-    savedBy: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
-  listing.qualityScore = listingQualityScore(listing);
 
-  state.listings.unshift(listing);
-  uploadedImageData = "";
-  addEvent("listing", `${listing.title} submitted for admin review.`, listing.id);
-  dom.listingForm.reset();
-  dom.imagePreview.innerHTML = "<span>No image selected</span>";
-  saveState();
-  renderAll();
-  switchView("admin");
-  showToast("Listing submitted for approval.");
+  try {
+    await API.createListing(payload);
+    uploadedImageData = "";
+    dom.listingForm.reset();
+    dom.imagePreview.innerHTML = "<span>No image selected</span>";
+    await refresh();
+    switchView("sell");
+    showToast("Listing submitted for approval.");
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
-dom.orderForm.addEventListener("submit", (event) => {
+dom.orderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const listing = listingById(state.selectedListingId);
   const account = activeAccount();
 
   if (!account) {
     showToast("Log in or create an account first.");
+    switchView("pulse");
     switchAuthMode("login");
     return;
   }
-
   if (!listing) {
     showToast("Select an approved item first.");
     return;
   }
-
   const availability = listingAvailability(listing.id);
   if (availability.locked) {
     showToast(`${listing.title} is ${availability.label.toLowerCase()}.`);
     return;
   }
 
-  const duplicate = state.orders.some(
-    (order) => order.buyerId === account.id && order.listingId === listing.id && order.status !== "Cancelled",
-  );
-  if (duplicate) {
-    showToast("You already requested this piece.");
-    return;
-  }
-
-  const paymentMethod = dom.orderPaymentMethod.value;
-  const paymentOption = paymentOptionById(paymentMethod);
-
-  if (paymentOption.disabled) {
-    showToast(`${paymentOption.label} is disabled for this prototype.`);
-    return;
-  }
-
-  const order = {
-    id: makeId("ord"),
+  const payload = {
     listingId: listing.id,
-    buyerId: account.id,
     buyerName: dom.orderName.value.trim() || account.name,
     contact: dom.orderContact.value.trim() || account.phone || account.email,
     deliveryCity: dom.orderDeliveryCity.value.trim() || account.city || "",
     note: dom.orderNote.value.trim(),
-    amount: listing.price,
-    paymentMethod,
-    paymentStatus: paymentMethod === "stripe-checkout" ? "Awaiting Stripe" : "Awaiting payment",
+    paymentMethod: dom.orderPaymentMethod.value,
     paymentReference: dom.orderPaymentReference.value.trim(),
-    status: "Requested",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
 
-  state.orders.push(order);
-  state.selectedListingId = "";
-  addEvent("order", `${account.name} requested checkout for ${listing.title}.`, order.id);
-  dom.orderForm.reset();
-  saveState();
-  renderAll();
-  switchView("pulse");
-  showToast("Checkout request sent to admin.");
+  try {
+    await API.createOrder(payload);
+    state.selectedListingId = "";
+    dom.orderForm.reset();
+    await refresh();
+    switchView("pulse");
+    showToast("Checkout requested — pay Cash on Delivery.");
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
   const requestButton = event.target.closest("[data-request-id]");
   const saveButton = event.target.closest("[data-toggle-save]");
   const approveButton = event.target.closest("[data-approve]");
@@ -2100,104 +2101,79 @@ document.addEventListener("click", (event) => {
       showToast(`${listing.title} is ${availability.label.toLowerCase()}.`);
       return;
     }
-    state.selectedListingId = requestButton.dataset.requestId;
-    saveState();
-    renderRequestPanel();
-    document.querySelector(".request-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-
-  if (saveButton) {
-    const account = activeAccount();
-    if (!account) {
-      showToast("Log in to save pieces.");
+    if (!activeAccount()) {
+      showToast("Log in to request checkout.");
+      switchView("pulse");
       switchAuthMode("login");
       return;
     }
-    const listingId = saveButton.dataset.toggleSave;
-    account.savedListingIds = account.savedListingIds || [];
-    if (account.savedListingIds.includes(listingId)) {
-      account.savedListingIds = account.savedListingIds.filter((id) => id !== listingId);
-      showToast("Removed from saved.");
-    } else {
-      account.savedListingIds.push(listingId);
-      showToast("Saved to closet.");
+    state.selectedListingId = requestButton.dataset.requestId;
+    switchView("browse");
+    renderRequestPanel();
+    requestAnimationFrame(() =>
+      document.querySelector(".request-panel")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+    return;
+  }
+
+  if (saveButton) {
+    if (!activeAccount()) {
+      showToast("Log in to save pieces.");
+      switchView("pulse");
+      switchAuthMode("login");
+      return;
     }
-    saveState();
-    renderAll();
+    try {
+      const { saved } = await API.toggleSave(saveButton.dataset.toggleSave);
+      await refresh();
+      showToast(saved ? "Saved to closet." : "Removed from saved.");
+    } catch (error) {
+      showToast(error.message);
+    }
+    return;
   }
 
   if (approveButton) {
-    const listing = listingById(approveButton.dataset.approve);
-    if (listing && canAdmin()) {
-      listing.status = "approved";
-      listing.updatedAt = new Date().toISOString();
-      addEvent("listing", `${listing.title} approved for the public drop.`, listing.id);
-      saveState();
-      renderAll();
+    try {
+      await API.approveListing(approveButton.dataset.approve);
+      await refresh();
       showToast("Listing approved.");
+    } catch (error) {
+      showToast(error.message);
     }
+    return;
   }
 
   if (rejectButton) {
-    const listing = listingById(rejectButton.dataset.reject);
-    if (listing && canAdmin()) {
-      listing.status = "rejected";
-      listing.updatedAt = new Date().toISOString();
-      addEvent("listing", `${listing.title} rejected from review.`, listing.id);
-      saveState();
-      renderAll();
+    try {
+      await API.rejectListing(rejectButton.dataset.reject);
+      await refresh();
       showToast("Listing rejected.");
+    } catch (error) {
+      showToast(error.message);
     }
+    return;
   }
 
   if (logoutButton) {
-    state.currentUserId = "";
+    API.logout();
     state.selectedListingId = "";
-    saveState();
-    renderAll();
+    await refresh();
     switchAuthMode("login");
+    switchView("home");
     showToast("Logged out.");
+    return;
   }
 
-  if (markPaidButton) {
-    updateOrder(markPaidButton.dataset.markPaid, (order) => {
-      order.paymentStatus = "Paid";
-      order.status = "Payment received";
-      return "Payment marked as paid.";
-    });
-  }
-
-  if (qcPassButton) {
-    updateOrder(qcPassButton.dataset.qcPass, (order) => {
-      order.status = "QC passed";
-      return "QC passed.";
-    });
-  }
-
-  if (dispatchButton) {
-    updateOrder(dispatchButton.dataset.dispatch, (order) => {
-      order.status = "Dispatched";
-      return "Order dispatched.";
-    });
-  }
-
-  if (markDeliveredButton) {
-    updateOrder(markDeliveredButton.dataset.markDelivered, (order) => {
-      order.status = "Delivered";
-      return "Order marked delivered.";
-    });
-  }
-
-  if (cancelOrderButton) {
-    updateOrder(cancelOrderButton.dataset.cancelOrder, (order) => {
-      order.status = "Cancelled";
-      if (order.paymentStatus !== "Paid") order.paymentStatus = "Cancelled";
-      return "Order cancelled.";
-    });
-  }
+  if (markPaidButton) return runOrderAction(markPaidButton.dataset.markPaid, "paid", "Payment marked as paid.");
+  if (qcPassButton) return runOrderAction(qcPassButton.dataset.qcPass, "qc", "QC passed.");
+  if (dispatchButton) return runOrderAction(dispatchButton.dataset.dispatch, "dispatch", "Order dispatched.");
+  if (markDeliveredButton) return runOrderAction(markDeliveredButton.dataset.markDelivered, "delivered", "Order delivered.");
+  if (cancelOrderButton) return runOrderAction(cancelOrderButton.dataset.cancelOrder, "cancel", "Order cancelled.");
 
   if (viewShortcut) {
     switchView(viewShortcut.dataset.viewShortcut);
+    return;
   }
 
   if (savedFilterButton) {
@@ -2208,29 +2184,30 @@ document.addEventListener("click", (event) => {
   }
 });
 
-function updateOrder(orderId, updater) {
-  const order = orderById(orderId);
-  if (!order || !canAdmin()) return;
-  const message = updater(order);
-  order.updatedAt = new Date().toISOString();
-  const listing = listingById(order.listingId);
-  addEvent("order", `${message} ${listing?.title || "Order"}`, order.id);
-  saveState();
-  renderAll();
-  showToast(message);
+async function runOrderAction(orderId, action, message) {
+  try {
+    await API.orderAction(orderId, action);
+    await refresh();
+    showToast(message);
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 document.addEventListener("change", (event) => {
   if (!event.target.matches("[data-account-switch]")) return;
-  state.currentUserId = event.target.value;
-  state.selectedListingId = "";
-  saveState();
-  renderAll();
-  showToast(`${activeAccount()?.name || "Account"} is active.`);
+  // Real authentication is in place — admins cannot impersonate other users.
+  event.target.value = state.currentUserId;
+  showToast("Switch accounts by logging in with their email and password.");
 });
 
-dom.resetDemo.addEventListener("click", () => {
-  state = structuredClone(seedState);
+dom.resetDemo.addEventListener("click", async () => {
+  try {
+    await API.reset();
+  } catch (error) {
+    showToast(error.status === 403 ? "Log in as admin (admin@bechdou.pk) to reset." : error.message);
+    return;
+  }
   filters = {
     category: "all",
     search: "",
@@ -2252,15 +2229,11 @@ dom.resetDemo.addEventListener("click", () => {
   });
   dom.orderForm.reset();
   dom.listingForm.reset();
-  dom.signupForm.reset();
-  dom.loginForm.reset();
   dom.imagePreview.innerHTML = "<span>No image selected</span>";
-  saveState();
-  renderAll();
-  switchAuthMode("signup");
-  switchView("home");
   homeReady = false;
-  showToast("Demo reset.");
+  await refresh();
+  switchView("home");
+  showToast("Demo data reset to seed.");
 });
 
 /* =====================================================================
@@ -2471,9 +2444,7 @@ if ("serviceWorker" in navigator) {
 }
 
 /* ---------- Init ---------- */
-renderPaymentMethodOptions();
-renderAll();
-switchView("home");
+boot();
 dom.heroInstall.hidden = false;
 initScrollReveal();
 // Surface the designed install banner once for first-time visitors even if the
