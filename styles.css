@@ -3073,3 +3073,307 @@ button.footer-link {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===================================================================
+   PRODUCT DETAIL VIEW  (#product/<id>)
+   =================================================================== */
+.pd-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+.pd-back {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.pd-crumb {
+  font-size: .78rem;
+  color: var(--ink-faint);
+  letter-spacing: .03em;
+}
+
+.pd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .pd-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+}
+
+.pd-gallery {
+  position: relative;
+}
+
+.pd-main-img {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface-raised);
+  aspect-ratio: 4/5;
+}
+
+.pd-main-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pd-sold-badge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(110,15,31,.55);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.pd-discount-chip {
+  margin-top: .75rem;
+  display: inline-block;
+  background: var(--merlot);
+  color: #fff;
+  font-size: .74rem;
+  font-weight: 600;
+  padding: .3rem .75rem;
+  border-radius: 999px;
+}
+
+.pd-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pd-seller-line {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  font-size: .85rem;
+  margin: 0;
+}
+
+.seller-av.sm {
+  width: 28px;
+  height: 28px;
+  font-size: .65rem;
+  flex-shrink: 0;
+}
+
+.pd-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--ink);
+}
+
+@media (max-width: 480px) {
+  .pd-title { font-size: 1.5rem; }
+}
+
+.pd-price {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+.pd-price strong {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--merlot);
+}
+
+.pd-price .retail {
+  font-size: .95rem;
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+.pd-avail {
+  align-self: flex-start;
+}
+
+.pd-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .4rem .75rem;
+  padding: 1rem;
+  background: var(--surface-raised);
+  border-radius: 10px;
+}
+
+.pd-fact {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+
+.pd-fact span {
+  font-size: .7rem;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.pd-fact strong {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pd-description {
+  font-size: .88rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.pd-quality {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+
+.pd-trust {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: 1rem;
+  background: var(--surface-raised);
+  border-radius: 10px;
+  font-size: .82rem;
+  color: var(--ink-soft);
+}
+
+.pd-trust div {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.pd-trust svg {
+  flex-shrink: 0;
+  color: var(--merlot);
+}
+
+.pd-cta {
+  display: flex;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+
+.pd-cta .button { flex: 1; min-width: 140px; justify-content: center; }
+
+.pd-related {
+  margin-top: 3rem;
+}
+
+.pd-related h2 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+}
+
+/* Link style for listing card titles */
+.listing-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+.listing-title-link:hover {
+  text-decoration: underline;
+  color: var(--merlot);
+}
+
+/* ===================================================================
+   SELLER CLOSET VIEW  (#closet/<id>)
+   =================================================================== */
+.closet-detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: var(--surface-raised);
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.closet-av.lg {
+  width: 72px;
+  height: 72px;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.closet-detail-meta {
+  flex: 1;
+  min-width: 180px;
+}
+
+.closet-detail-meta h1 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 .2rem;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+
+.closet-detail-meta p {
+  font-size: .85rem;
+  color: var(--ink-faint);
+  margin: 0 0 .8rem;
+}
+
+.closet-detail-stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.closet-detail-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+
+.closet-detail-stats strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.closet-detail-stats span {
+  font-size: .72rem;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.closet-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 480px) {
+  .closet-detail-grid { grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+}

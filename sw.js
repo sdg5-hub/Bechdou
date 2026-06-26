@@ -1,10 +1,12 @@
-/* Bechdou service worker — app-shell caching for a fast, installable PWA. */
-const CACHE = "bechdou-v14";
+/* Bechdou service worker — app-shell caching + graceful offline fallback. */
+const CACHE = "bechdou-v15";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=14",
-  "./script.js?v=14",
+  "./offline.html",
+  "./styles.css?v=15",
+  "./script.js?v=15",
+  "./api.js",
   "./manifest.webmanifest",
   "./assets/icon.svg",
 ];
@@ -31,23 +33,37 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
-  // Network-first for page navigations so the HTML shell never goes stale.
+  // Skip cross-origin requests and API calls (always network-only).
+  const url = new URL(request.url);
+  if (url.origin !== location.origin) return;
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/checkout/")) return;
+
+  // Network-first for page navigations — fresh HTML on every load.
+  // Fall back to offline.html if the network is unreachable.
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("./index.html")));
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match("./offline.html").then((res) => res || caches.match("./index.html")),
+      ),
+    );
     return;
   }
 
-  // Cache-first for same-origin assets, with runtime caching.
+  // Cache-first for same-origin assets (images, CSS, JS).
+  // Runtime-cache any asset not already in the shell.
   event.respondWith(
     caches.match(request).then(
       (cached) =>
         cached ||
         fetch(request).then((response) => {
-          if (response && response.ok && new URL(request.url).origin === location.origin) {
+          if (response && response.ok) {
             const copy = response.clone();
             caches.open(CACHE).then((cache) => cache.put(request, copy));
           }
           return response;
+        }).catch(() => {
+          // For image requests, return nothing (broken img) rather than crash.
+          if (request.destination === "image") return new Response("", { status: 200 });
         }),
     ),
   );
