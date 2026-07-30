@@ -54,17 +54,31 @@ const API = (() => {
     signup: (payload) => request("POST", "/auth/signup", payload),
     login: (payload) => request("POST", "/auth/login", payload),
     logout: () => setToken(""),
+    verifyEmail: (token) => request("POST", "/auth/verify-email", { token }),
+    resendVerification: () => request("POST", "/auth/resend-verification"),
+    forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
+    resetPassword: (token, password) => request("POST", "/auth/reset-password", { token, password }),
+
+    updateProfile: (payload) => request("PATCH", "/profile", payload),
+    seller: (handle) => request("GET", `/sellers/${encodeURIComponent(handle)}`),
 
     listing: (id) => request("GET", `/listings/${id}`),
     createListing: (payload) => request("POST", "/listings", payload),
+    updateListing: (id, payload) => request("PATCH", `/listings/${id}`, payload),
+    deleteListing: (id) => request("DELETE", `/listings/${id}`),
+    markSold: (id, sold) => request("POST", `/listings/${id}/sold`, { sold }),
     approveListing: (id) => request("POST", `/listings/${id}/approve`),
     rejectListing: (id) => request("POST", `/listings/${id}/reject`),
     toggleSave: (id) => request("POST", `/listings/${id}/save`),
 
     createOrder: (payload) => request("POST", "/orders", payload),
     orderAction: (id, action) => request("POST", `/orders/${id}/status`, { action }),
+    shipOrder: (id) => request("POST", `/orders/${id}/ship`),
+    cancelOrder: (id) => request("POST", `/orders/${id}/cancel`),
+    setPayout: (id, payoutStatus) => request("POST", `/orders/${id}/payout`, { payoutStatus }),
 
-    stripeCheckout: (payload) => request("POST", "/checkout/stripe", payload),
+    accounts: () => request("GET", "/accounts"),
+    suspendAccount: (id, suspended) => request("POST", `/accounts/${id}/suspend`, { suspended }),
 
     reset: () => request("POST", "/reset"),
   };
