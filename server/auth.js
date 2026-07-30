@@ -21,6 +21,17 @@ export function verifyPassword(password, stored) {
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
 
+/* ---------- Single-use links (email verification, password reset) ---------- */
+// Only the hash is stored, so a database leak cannot yield usable reset links.
+export function createLinkToken() {
+  const token = crypto.randomBytes(32).toString("base64url");
+  return { token, tokenHash: hashLinkToken(token) };
+}
+
+export function hashLinkToken(token) {
+  return crypto.createHash("sha256").update(String(token || "")).digest("hex");
+}
+
 /* ---------- Tokens (HS256, JWT-compatible encoding) ---------- */
 function b64url(input) {
   return Buffer.from(input).toString("base64url");
