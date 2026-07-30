@@ -37,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=15" />
+    <link rel="stylesheet" href="./styles.css?v=24" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -58,129 +58,40 @@
           <button class="nav-button" type="button" data-view-target="browse">
             Browse
           </button>
-          <button class="nav-button" type="button" data-view-target="sell">
+          <button class="nav-button" type="button" data-view-target="sell" data-requires="seller">
             Sell
           </button>
-          <button class="nav-button" type="button" data-view-target="pulse">
-            Pulse
+          <button class="nav-button" type="button" data-view-target="orders" data-requires="auth">
+            Orders
           </button>
-          <button class="nav-button" type="button" data-view-target="admin">
+          <button class="nav-button" type="button" data-view-target="admin" data-requires="admin">
             Admin
           </button>
         </nav>
 
-        <div class="top-actions">
-          <span class="ops-pill" id="top-status">0 pending</span>
-          <button class="plain-button" type="button" id="reset-demo">Reset</button>
+        <div class="top-actions" id="top-actions">
+          <div class="auth-actions" id="signed-out-actions">
+            <button class="plain-button" type="button" data-view-target="login">Log in</button>
+            <button class="button primary sm" type="button" data-view-target="signup">Sign up</button>
+          </div>
+          <div class="account-menu" id="account-menu" hidden>
+            <button class="account-trigger" type="button" id="account-trigger" aria-haspopup="menu" aria-expanded="false">
+              <span class="account-avatar" id="account-avatar"></span>
+              <span class="account-trigger-name" id="account-trigger-name"></span>
+            </button>
+            <div class="account-dropdown" id="account-dropdown" role="menu" hidden>
+              <button type="button" role="menuitem" data-view-target="profile">My profile</button>
+              <button type="button" role="menuitem" data-view-target="orders">My orders</button>
+              <button type="button" role="menuitem" data-view-target="saved">Saved pieces</button>
+              <button type="button" role="menuitem" data-view-target="sell" data-requires="seller">Seller studio</button>
+              <button type="button" role="menuitem" data-view-target="admin" data-requires="admin">Admin dashboard</button>
+              <button type="button" role="menuitem" id="logout-button" class="is-danger">Log out</button>
+            </div>
+          </div>
         </div>
       </header>
 
       <main class="market-shell" id="main-content">
-        <aside class="brand-rail" aria-label="Bechdou account and status">
-          <section class="brand-panel">
-            <p class="script-label">Bechdou.pk</p>
-            <h1>Shop &amp; sell closet drops.</h1>
-            <p class="brand-note">
-              Open clothing resale, admin-moderated listings, Stripe checkout,
-              delivery operations, and GMV growth in one elevated prototype.
-            </p>
-            <div class="stripe-swatch" aria-hidden="true"></div>
-            <img
-              class="brand-image"
-              src="./assets/bechdou-editorial-collage.png"
-              alt="Editorial fashion resale flat lay in cream, powder blue, and merlot"
-            />
-            <div class="signal-list" aria-label="Marketplace signals">
-              <div>
-                <strong id="approved-count">0</strong>
-                <span>approved</span>
-              </div>
-              <div>
-                <strong id="request-count">0</strong>
-                <span>requests</span>
-              </div>
-              <div>
-                <strong id="account-count">0</strong>
-                <span>accounts</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="side-panel">
-            <div class="section-title">
-              <p class="eyebrow">Account</p>
-              <h2>Session</h2>
-            </div>
-
-            <div class="mode-tabs" aria-label="Account mode">
-              <button class="mode-tab is-active" type="button" data-auth-mode="signup">Sign up</button>
-              <button class="mode-tab" type="button" data-auth-mode="login">Log in</button>
-            </div>
-
-            <form class="stacked-form" id="signup-form" data-auth-panel="signup">
-              <label>
-                Full name
-                <input id="signup-name" name="name" type="text" autocomplete="name" required />
-              </label>
-              <label>
-                Email
-                <input id="signup-email" name="email" type="email" autocomplete="email" required />
-              </label>
-              <label>
-                Password
-                <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="6" required />
-              </label>
-              <div class="form-grid compact">
-                <label>
-                  Phone
-                  <input id="signup-phone" name="phone" type="tel" autocomplete="tel" placeholder="+92..." />
-                </label>
-                <label>
-                  City
-                  <input id="signup-city" name="city" type="text" autocomplete="address-level2" placeholder="Lahore" />
-                </label>
-              </div>
-              <label>
-                Role
-                <select id="signup-role" name="role">
-                  <option value="buyer">Buyer</option>
-                  <option value="seller">Seller</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </label>
-              <button class="button primary" type="submit">Create account</button>
-            </form>
-
-            <form class="stacked-form is-hidden" id="login-form" data-auth-panel="login" hidden>
-              <label>
-                Email
-                <input id="login-email" name="email" type="email" autocomplete="email" required />
-              </label>
-              <label>
-                Password
-                <input id="login-password" name="password" type="password" autocomplete="current-password" required />
-              </label>
-              <button class="button primary" type="submit">Log in</button>
-            </form>
-
-            <div class="account-summary" id="current-account" hidden></div>
-          </section>
-
-          <section class="side-panel compact">
-            <p class="eyebrow">Access</p>
-            <div class="session-summary" id="session-summary"></div>
-          </section>
-
-          <section class="side-panel compact">
-            <p class="eyebrow">Payments</p>
-            <div class="payment-summary" id="payment-summary"></div>
-          </section>
-
-          <section class="side-panel compact">
-            <p class="eyebrow">Ops</p>
-            <div class="ops-stack" id="ops-summary"></div>
-          </section>
-        </aside>
 
         <section class="workspace" aria-live="polite">
           <section
@@ -749,8 +660,9 @@
                     <input id="listing-image-url" name="imageUrl" type="url" placeholder="https://..." />
                   </label>
                   <label>
-                    Upload image
-                    <input id="listing-image-file" name="imageFile" type="file" accept="image/*" />
+                    Upload photos
+                    <input id="listing-image-file" name="imageFile" type="file" accept="image/*" multiple />
+                    <span class="auth-hint">Up to 6 photos. The first one becomes the cover.</span>
                   </label>
                   <div class="image-preview" id="image-preview" aria-label="Listing image preview">
                     <span>No image selected</span>
@@ -771,51 +683,7 @@
             </div>
           </section>
 
-          <section class="view-panel" id="admin-view" data-view-panel="admin">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Admin review</p>
-                <h2>Control quality, payments, and delivery.</h2>
-              </div>
-              <div class="role-note" id="admin-role-note"></div>
-            </div>
-
-            <div class="admin-kpis" id="admin-kpis"></div>
-
-            <div class="admin-layout">
-              <section class="review-panel">
-                <div class="section-title">
-                  <p class="eyebrow">Approval queue</p>
-                  <h3>Pending listings</h3>
-                </div>
-                <div class="queue-list" id="pending-listings"></div>
-              </section>
-
-              <section class="review-panel">
-                <div class="section-title">
-                  <p class="eyebrow">Buyer requests</p>
-                  <h3>Manual order desk</h3>
-                </div>
-                <div class="queue-list" id="order-list"></div>
-              </section>
-
-              <section class="review-panel">
-                <div class="section-title">
-                  <p class="eyebrow">Accounts</p>
-                  <h3>User control</h3>
-                </div>
-                <div class="account-table" id="account-table"></div>
-              </section>
-
-              <section class="review-panel">
-                <div class="section-title">
-                  <p class="eyebrow">Ledger</p>
-                  <h3>Ops history</h3>
-                </div>
-                <div class="ledger-list" id="ledger-list"></div>
-              </section>
-            </div>
-          </section>
+          <section class="view-panel" id="admin-view" data-view-panel="admin"></section>
 
           <!-- PRODUCT DETAIL VIEW -->
           <section
@@ -832,6 +700,20 @@
             data-view-panel="closet"
             aria-label="Seller closet"
           ></section>
+
+          <!-- AUTH VIEWS -->
+          <section class="view-panel" id="login-view" data-view-panel="login" aria-label="Log in"></section>
+          <section class="view-panel" id="signup-view" data-view-panel="signup" aria-label="Create account"></section>
+          <section class="view-panel" id="forgot-view" data-view-panel="forgot-password" aria-label="Forgot password"></section>
+          <section class="view-panel" id="reset-view" data-view-panel="reset-password" aria-label="Reset password"></section>
+          <section class="view-panel" id="verify-view" data-view-panel="verify-email" aria-label="Verify email"></section>
+
+          <!-- ACCOUNT VIEWS -->
+          <section class="view-panel" id="profile-view" data-view-panel="profile" aria-label="My profile"></section>
+          <section class="view-panel" id="checkout-view" data-view-panel="checkout" aria-label="Checkout"></section>
+          <section class="view-panel" id="confirmation-view" data-view-panel="confirmation" aria-label="Order confirmation"></section>
+          <section class="view-panel" id="orders-view" data-view-panel="orders" aria-label="My orders"></section>
+          <section class="view-panel" id="saved-view" data-view-panel="saved" aria-label="Saved pieces"></section>
 
         </section>
       </main>
@@ -888,7 +770,12 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./api.js?v=15"></script>
-    <script src="./script.js?v=15"></script>
+    <script src="./api.js?v=24"></script>
+    <script src="./pages.js?v=24"></script>
+    <script src="./pages-account.js?v=24"></script>
+    <script src="./admin.js?v=24"></script>
+    <script src="./script.js?v=24"></script>
+    <script src="./seller.js?v=24"></script>
+    <script src="./wire.js?v=24"></script>
   </body>
 </html>

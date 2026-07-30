@@ -378,24 +378,30 @@ const dom = {
   navButtons: document.querySelectorAll("[data-view-target]"),
   panels: document.querySelectorAll("[data-view-panel]"),
   categoryButtons: document.querySelectorAll("[data-category]"),
-  authModeButtons: document.querySelectorAll("[data-auth-mode]"),
-  authPanels: document.querySelectorAll("[data-auth-panel]"),
-  topStatus: document.getElementById("top-status"),
-  approvedCount: document.getElementById("approved-count"),
-  requestCount: document.getElementById("request-count"),
-  accountCount: document.getElementById("account-count"),
+  signedOutActions: document.getElementById("signed-out-actions"),
+  accountMenu: document.getElementById("account-menu"),
+  accountTrigger: document.getElementById("account-trigger"),
+  accountDropdown: document.getElementById("account-dropdown"),
+  accountAvatar: document.getElementById("account-avatar"),
+  accountTriggerName: document.getElementById("account-trigger-name"),
+  logoutButton: document.getElementById("logout-button"),
+  loginView: document.getElementById("login-view"),
+  signupView: document.getElementById("signup-view"),
+  forgotView: document.getElementById("forgot-view"),
+  resetView: document.getElementById("reset-view"),
+  verifyView: document.getElementById("verify-view"),
+  profileView: document.getElementById("profile-view"),
+  checkoutView: document.getElementById("checkout-view"),
+  confirmationView: document.getElementById("confirmation-view"),
+  ordersView: document.getElementById("orders-view"),
+  savedView: document.getElementById("saved-view"),
+  adminView: document.getElementById("admin-view"),
   activeUserCard: document.getElementById("active-user-card"),
   marketMetrics: document.getElementById("market-metrics"),
   roleDashboardTitle: document.getElementById("role-dashboard-title"),
   roleDashboard: document.getElementById("role-dashboard"),
   activityFeed: document.getElementById("activity-feed"),
   ceoQuestions: document.getElementById("ceo-questions"),
-  sessionSummary: document.getElementById("session-summary"),
-  paymentSummary: document.getElementById("payment-summary"),
-  opsSummary: document.getElementById("ops-summary"),
-  signupForm: document.getElementById("signup-form"),
-  loginForm: document.getElementById("login-form"),
-  currentAccount: document.getElementById("current-account"),
   searchInput: document.getElementById("search-input"),
   filterCity: document.getElementById("filter-city"),
   filterCondition: document.getElementById("filter-condition"),
@@ -420,14 +426,7 @@ const dom = {
   sellerMetrics: document.getElementById("seller-metrics"),
   listingAssistant: document.getElementById("listing-assistant"),
   sellerListings: document.getElementById("seller-listings"),
-  pendingListings: document.getElementById("pending-listings"),
-  orderList: document.getElementById("order-list"),
-  accountTable: document.getElementById("account-table"),
-  ledgerList: document.getElementById("ledger-list"),
   sellerRoleNote: document.getElementById("seller-role-note"),
-  adminRoleNote: document.getElementById("admin-role-note"),
-  adminKpis: document.getElementById("admin-kpis"),
-  resetDemo: document.getElementById("reset-demo"),
   toast: document.getElementById("toast"),
   // Consumer storefront
   heroStatItems: document.getElementById("hero-stat-items"),
@@ -770,7 +769,12 @@ function listingAvailability(listingId) {
     .filter((item) => item.listingId === listingId && item.status !== "Cancelled")
     .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))[0];
 
-  if (!order) return { label: "Available", locked: false, order: null };
+  // A seller can retire a piece without any order existing for it.
+  if (!order) {
+    return listingById(listingId)?.sold
+      ? { label: "Sold", locked: true, order: null }
+      : { label: "Available", locked: false, order: null };
+  }
   if (order.status === "Delivered") return { label: "Sold", locked: true, order };
   return { label: "Reserved", locked: true, order };
 }
@@ -870,7 +874,32 @@ function showToast(message) {
   toastTimer = setTimeout(() => dom.toast.classList.remove("is-visible"), 2600);
 }
 
+// Views that require a session, and the role each one needs.
+const VIEW_GUARDS = {
+  sell: (account) => canSell(account),
+  admin: (account) => canAdmin(account),
+  orders: (account) => !!account,
+  profile: (account) => !!account,
+  checkout: (account) => !!account,
+  saved: (account) => !!account,
+};
+
 function switchView(view) {
+  const account = activeAccount();
+  const guard = VIEW_GUARDS[view];
+  if (guard && !guard(account)) {
+    if (!account) {
+      pendingRedirect = view;
+      switchView("login");
+      showToast("Please log in to continue.");
+      return;
+    }
+    showToast("You do not have access to that area.");
+    return;
+  }
+
+  renderViewOnEnter(view);
+
   dom.navButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.viewTarget === view);
   });
@@ -878,18 +907,24 @@ function switchView(view) {
     panel.classList.toggle("is-active", panel.dataset.viewPanel === view);
   });
   document.body.classList.toggle("home-active", view === "home");
+  closeAccountDropdown();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function switchAuthMode(mode) {
-  dom.authModeButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.authMode === mode);
-  });
-  dom.authPanels.forEach((panel) => {
-    const isActive = panel.dataset.authPanel === mode;
-    panel.hidden = !isActive;
-    panel.classList.toggle("is-hidden", !isActive);
-  });
+let pendingRedirect = "";
+
+// Pages are rendered lazily so they always reflect current state.
+function renderViewOnEnter(view) {
+  switch (view) {
+    case "login": return renderLoginPage();
+    case "signup": return renderSignupPage();
+    case "forgot-password": return renderForgotPage();
+    case "reset-password": return renderResetPage();
+    case "profile": return renderProfilePage();
+    case "orders": return renderOrdersPage();
+    case "saved": return renderSavedPage();
+    default: return undefined;
+  }
 }
 
 function setFormEnabled(form, enabled) {
@@ -911,30 +946,8 @@ function addEvent(type, message, entityId = "") {
 }
 
 function renderCounts() {
-  const metrics = marketplaceMetrics();
-  dom.approvedCount.textContent = metrics.approved;
-  dom.requestCount.textContent = metrics.orders;
-  dom.accountCount.textContent = state.accounts.length;
-  dom.topStatus.textContent = metrics.openOrders
-    ? `${metrics.pending} pending / ${metrics.openOrders} active`
-    : `${metrics.pending} pending`;
-
-  dom.opsSummary.innerHTML = [
-    ["GMV", money(metrics.totalGmv)],
-    ["30-day sell-through", `${metrics.sellThrough30}%`],
-    ["Active seller rate", `${metrics.activeSellerRate}%`],
-    ["Recirculated", metrics.recirculatedItems],
-    ["Pending review", metrics.pending],
-  ]
-    .map(
-      ([label, value]) => `
-        <div class="ops-row">
-          <strong>${escapeHtml(value)}</strong>
-          <span>${escapeHtml(label)}</span>
-        </div>
-      `,
-    )
-    .join("");
+  renderAccountMenu();
+  renderNavVisibility();
 }
 
 function metricCard(label, value, caption, tone = "") {
@@ -1083,80 +1096,53 @@ function renderCeoQuestions() {
     .join("");
 }
 
-function renderSessionSummary() {
-  const account = activeAccount();
-  const permissions = account
-    ? [
-        "browse",
-        account.role === "buyer" ? "request" : "",
-        canSell(account) ? "sell" : "",
-        canAdmin(account) ? "admin" : "",
-      ].filter(Boolean)
-    : ["browse"];
-
-  dom.sessionSummary.innerHTML = `
-    <div class="demo-credential">
-      <strong>Demo password</strong>
-      <code>${escapeHtml(DEMO_PASSWORD)}</code>
-    </div>
-    <div class="permission-row">
-      ${permissions.map((permission) => `<span class="status ${escapeHtml(permission)}">${escapeHtml(permission)}</span>`).join("")}
-    </div>
-  `;
-}
-
-function renderPaymentSummary() {
-  dom.paymentSummary.innerHTML = paymentOptions
-    .map(
-      (option) => `
-        <article class="payment-route ${option.disabled ? "is-disabled" : ""}">
-          <div>
-            <strong>${escapeHtml(option.label)}</strong>
-            <span>${escapeHtml(option.note)}</span>
-          </div>
-          <span class="${statusClass(option.status)}">${escapeHtml(option.status)}</span>
-        </article>
-      `,
-    )
-    .join("");
-}
+function renderSessionSummary() {}
+function renderPaymentSummary() {}
 
 function renderAccount() {
-  const account = activeAccount();
+  renderAccountMenu();
+  renderNavVisibility();
+}
 
-  if (!account) {
-    dom.currentAccount.hidden = false;
-    dom.currentAccount.innerHTML = `
-      <span class="status pending">Signed out</span>
-      <p class="status-note">Create an account or log in.</p>
-    `;
+/* ---------- Topbar account menu + role-gated nav ---------- */
+function renderAccountMenu() {
+  const account = activeAccount();
+  const signedIn = !!account;
+  if (dom.signedOutActions) dom.signedOutActions.hidden = signedIn;
+  if (dom.accountMenu) dom.accountMenu.hidden = !signedIn;
+  if (!signedIn) {
+    closeAccountDropdown();
     return;
   }
+  if (dom.accountTriggerName) dom.accountTriggerName.textContent = account.name;
+  if (dom.accountAvatar) {
+    if (account.avatar) {
+      dom.accountAvatar.style.backgroundImage = `url("${account.avatar}")`;
+      dom.accountAvatar.textContent = "";
+    } else {
+      dom.accountAvatar.style.backgroundImage = '';
+      dom.accountAvatar.textContent = initials(account.name);
+    }
+  }
+}
 
-  dom.currentAccount.hidden = false;
-  dom.currentAccount.innerHTML = `
-    <div class="account-card-head">
-      <span class="${statusClass(account.role)}">${escapeHtml(account.role)}</span>
-      <button class="mini-button" type="button" data-logout>Log out</button>
-    </div>
-    <strong>${escapeHtml(account.name)}</strong>
-    <span>${escapeHtml(account.email)}</span>
-    <span>${escapeHtml(account.phone || "No phone")} - ${escapeHtml(account.city || "Pakistan")}</span>
-    <label class="account-switch">
-      Switch demo account
-      <select data-account-switch>
-        ${state.accounts
-          .map(
-            (item) => `
-              <option value="${escapeHtml(item.id)}" ${item.id === account.id ? "selected" : ""}>
-                ${escapeHtml(item.name)} (${escapeHtml(item.role)})
-              </option>
-            `,
-          )
-          .join("")}
-      </select>
-    </label>
-  `;
+// Hide nav entries the current role cannot use.
+function renderNavVisibility() {
+  const account = activeAccount();
+  document.querySelectorAll('[data-requires]').forEach((el) => {
+    const need = el.dataset.requires;
+    const ok =
+      need === 'auth' ? !!account :
+      need === 'seller' ? canSell(account) :
+      need === 'admin' ? canAdmin(account) : true;
+    el.hidden = !ok;
+  });
+}
+
+function closeAccountDropdown() {
+  if (!dom.accountDropdown) return;
+  dom.accountDropdown.hidden = true;
+  if (dom.accountTrigger) dom.accountTrigger.setAttribute('aria-expanded', 'false');
 }
 
 function renderFilterOptions() {
@@ -1466,7 +1452,7 @@ function renderSellerQueue() {
     .slice(0, 8);
 
   dom.sellerListings.innerHTML = listings.length
-    ? listings.map((listing) => queueItem(listing)).join("")
+    ? listings.map((listing) => queueItem(listing, { actions: sellerActions(listing) })).join("")
     : `
       <div class="empty-state">
         <h3>No listings yet</h3>
@@ -1475,174 +1461,43 @@ function renderSellerQueue() {
     `;
 }
 
-function renderAdminKpis(adminAllowed) {
-  const metrics = marketplaceMetrics();
-  dom.adminKpis.innerHTML = adminAllowed
-    ? [
-        metricCard("GMV", money(metrics.totalGmv), "North-star value"),
-        metricCard("Sell-through", `${metrics.sellThrough30}%`, "First 30 days"),
-        metricCard("Active sellers", `${metrics.activeSellerRate}%`, "Supply health"),
-        metricCard("Seller payout", money(metrics.payoutDue), "Stripe Connect target"),
-      ].join("")
-    : [
-        metricCard("Admin", "Locked", "Admin account required"),
-        metricCard("Seed login", "admin@bechdou.pk", "Password in access panel"),
-      ].join("");
+function sellerActions(listing) {
+  return [
+    { name: "seller-edit", label: "Edit" },
+    { name: "seller-sold", label: listing.sold ? "Mark available" : "Mark sold" },
+    { name: "seller-delete", label: "Delete", kind: "danger" },
+  ];
 }
 
-function renderAdmin() {
-  const account = activeAccount();
-  const adminAllowed = canAdmin(account);
+/* Admin dashboard lives in admin.js */
 
-  dom.adminRoleNote.innerHTML = adminAllowed
-    ? `<span class="status approved">Admin active</span>`
-    : `<span class="status pending">Admin login required</span>`;
-
-  renderAdminKpis(adminAllowed);
-
-  if (!adminAllowed) {
-    const locked = `
-      <div class="empty-state">
-        <h3>Admin login required</h3>
-        <p>Admin operations are role-gated.</p>
-      </div>
-    `;
-    dom.pendingListings.innerHTML = locked;
-    dom.orderList.innerHTML = locked;
-    dom.accountTable.innerHTML = locked;
-    dom.ledgerList.innerHTML = locked;
-    return;
-  }
-
-  const pending = state.listings
-    .filter((listing) => listing.status === "pending")
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-  dom.pendingListings.innerHTML = pending.length
-    ? pending
-        .map((listing) =>
-          queueItem(listing, {
-            actions: [
-              { name: "approve", label: "Approve", kind: "approve" },
-              { name: "reject", label: "Reject", kind: "reject" },
-            ],
-          }),
-        )
-        .join("")
-    : `
-      <div class="empty-state">
-        <h3>Queue clear</h3>
-        <p>New seller uploads appear here.</p>
-      </div>
-    `;
-
-  dom.orderList.innerHTML = state.orders.length
-    ? state.orders
-        .slice()
-        .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-        .map(orderCard)
-        .join("")
-    : `
-      <div class="empty-state">
-        <h3>No requests yet</h3>
-        <p>Buyer checkout requests appear here.</p>
-      </div>
-    `;
-
-  renderAccountTable();
-  renderLedger();
+// Photos for a listing. Falls back to the single legacy image for older rows.
+function listingGallery(listing) {
+  const images = Array.isArray(listing?.images) && listing.images.length
+    ? listing.images
+    : [listing?.image];
+  const clean = unique(images.filter(Boolean).map(safeImage));
+  return clean.length ? clean : [FALLBACK_IMAGE];
 }
 
-function orderCard(order) {
-  const listing = listingById(order.listingId);
-  const canMarkPaid = order.paymentStatus !== "Paid" && order.status !== "Cancelled";
-  const canQc = order.paymentStatus === "Paid" && !["QC passed", "Dispatched", "Delivered", "Cancelled"].includes(order.status);
-  const canDispatch = order.status === "QC passed";
-  const canDeliver = order.status === "Dispatched";
-  const canCancel = !["Delivered", "Cancelled"].includes(order.status);
-
+// Thumbnail strip shared by the quick view and the product page.
+function galleryThumbs(listing, scope) {
+  const gallery = listingGallery(listing);
+  if (gallery.length < 2) return "";
   return `
-    <article class="queue-item order-card">
-      <img src="${escapeHtml(safeImage(listing?.image))}" alt="${escapeHtml(listing?.title || "Requested item")}" />
-      <div class="queue-copy">
-        <div class="status-row">
-          <span class="${statusClass(order.status)}">${escapeHtml(order.status)}</span>
-          <span class="${statusClass(order.paymentStatus)}">${escapeHtml(order.paymentStatus)}</span>
-        </div>
-        <h4>${escapeHtml(listing?.title || "Requested item")}</h4>
-        <p class="queue-meta">${escapeHtml(order.buyerName)} - ${escapeHtml(order.contact)}</p>
-        <p class="queue-meta">${escapeHtml(order.deliveryCity || "No city")} - ${escapeHtml(paymentLabel(order.paymentMethod))}</p>
-        <p class="queue-meta">${escapeHtml(money(order.amount))} - payout ${escapeHtml(money(payoutFor(order.amount)))}</p>
-        <p class="queue-meta">Ref: ${escapeHtml(order.paymentReference || "Not provided")}</p>
-        <p class="queue-meta">${escapeHtml(order.note || "No note")}</p>
-        <div class="order-progress" aria-hidden="true">
-          <span style="width: ${orderProgress(order.status)}%"></span>
-        </div>
-        <div class="queue-actions">
-          ${canMarkPaid ? `<button class="mini-button approve" type="button" data-mark-paid="${escapeHtml(order.id)}">Mark paid</button>` : ""}
-          ${canQc ? `<button class="mini-button approve" type="button" data-qc-pass="${escapeHtml(order.id)}">QC pass</button>` : ""}
-          ${canDispatch ? `<button class="mini-button" type="button" data-dispatch="${escapeHtml(order.id)}">Dispatch</button>` : ""}
-          ${canDeliver ? `<button class="mini-button approve" type="button" data-mark-delivered="${escapeHtml(order.id)}">Delivered</button>` : ""}
-          ${canCancel ? `<button class="mini-button reject" type="button" data-cancel-order="${escapeHtml(order.id)}">Cancel</button>` : ""}
-        </div>
-      </div>
-    </article>
+    <div class="${scope}__thumbs gallery-thumbs" data-gallery-scope="${escapeHtml(scope)}">
+      ${gallery
+        .map(
+          (src, i) => `
+            <button type="button" class="${i === 0 ? "is-active" : ""}"
+              data-gallery-thumb="${escapeHtml(src)}" data-gallery-target="${escapeHtml(scope)}"
+              aria-label="View photo ${i + 1} of ${gallery.length}">
+              <img src="${escapeHtml(src)}" alt="" loading="lazy" />
+            </button>`,
+        )
+        .join("")}
+    </div>
   `;
-}
-
-function orderProgress(status) {
-  const map = {
-    Requested: 18,
-    "Payment received": 42,
-    "QC passed": 64,
-    Dispatched: 84,
-    Delivered: 100,
-    Cancelled: 100,
-  };
-  return map[status] || 28;
-}
-
-function renderAccountTable() {
-  dom.accountTable.innerHTML = state.accounts
-    .map((account) => {
-      const orders = state.orders.filter((order) => order.buyerId === account.id).length;
-      const listings = state.listings.filter((listing) => listing.sellerId === account.id).length;
-      return `
-        <article class="account-row">
-          <div>
-            <strong>${escapeHtml(account.name)}</strong>
-            <span>${escapeHtml(account.email)}</span>
-          </div>
-          <span class="${statusClass(account.role)}">${escapeHtml(account.role)}</span>
-          <span>${escapeHtml(account.city)}</span>
-          <span>${listings} listings / ${orders} orders</span>
-        </article>
-      `;
-    })
-    .join("");
-}
-
-function renderLedger() {
-  dom.ledgerList.innerHTML = state.auditLog.length
-    ? state.auditLog
-        .slice(0, 14)
-        .map((event) => {
-          const actor = accountById(event.actorId);
-          return `
-            <article class="ledger-item">
-              <span class="${statusClass(event.type)}">${escapeHtml(event.type)}</span>
-              <strong>${escapeHtml(event.message)}</strong>
-              <small>${escapeHtml(actor?.name || "System")} - ${escapeHtml(shortDate(event.createdAt))}</small>
-            </article>
-          `;
-        })
-        .join("")
-    : `
-      <div class="empty-state">
-        <h3>No ledger events</h3>
-        <p>Admin actions appear here.</p>
-      </div>
-    `;
 }
 
 function discountOf(listing) {
@@ -1860,9 +1715,10 @@ function renderProductDetail(listingId) {
       <div class="pd-grid">
         <div class="pd-gallery">
           <div class="pd-main-img">
-            <img src="${escapeHtml(safeImage(listing.image))}" alt="${escapeHtml(listing.title)}" />
+            <img id="pd-stage-img" src="${escapeHtml(listingGallery(listing)[0])}" alt="${escapeHtml(listing.title)}" />
             ${availability.locked ? `<span class="pd-sold-badge">${escapeHtml(availability.label)}</span>` : ""}
           </div>
+          ${galleryThumbs(listing, "pd")}
           ${discount ? `<div class="pd-discount-chip">${discount}% below retail</div>` : ""}
         </div>
 
@@ -1950,10 +1806,13 @@ function renderSellerCloset(sellerId) {
       </nav>
 
       <header class="closet-detail-head">
-        <span class="closet-av lg">${escapeHtml(initials(seller.name))}</span>
+        <span class="closet-av lg"${seller.avatar ? ` style="background-image:url('${escapeHtml(seller.avatar)}')"` : ""}>
+          ${seller.avatar ? "" : escapeHtml(initials(seller.name))}
+        </span>
         <div class="closet-detail-meta">
           <h1>${escapeHtml(seller.name)}${verified ? `<span class="verified-badge" title="Verified closet">${icons.verified} Verified</span>` : ""}</h1>
           <p>${escapeHtml(seller.handle || "@" + initials(seller.name).toLowerCase())} · ${escapeHtml(seller.city || "Pakistan")}</p>
+          ${seller.bio ? `<p class="closet-bio">${escapeHtml(seller.bio)}</p>` : ""}
           <div class="closet-detail-stats">
             <div><strong>${listings.length}</strong><span>Pieces</span></div>
             <div><strong>${followerCount(seller).toLocaleString()}</strong><span>Followers</span></div>
@@ -1988,15 +1847,32 @@ function handleRoute() {
     renderSellerCloset(decodeURIComponent(closetMatch[1]));
     return;
   }
-  if (hash === "#checkout-success") {
-    window.history.replaceState(null, "", location.pathname);
-    refresh().then(() => {
-      switchView("pulse");
-      showToast("Payment confirmed — your order is on the way.");
-    });
+  const checkoutMatch = hash.match(/^#checkout\/([^/?]+)/);
+  if (checkoutMatch) {
+    openCheckout(decodeURIComponent(checkoutMatch[1]));
+    return;
+  }
+
+  const route = hash.replace(/^#/, "").split("?")[0];
+
+  // A verification link carries its token in the hash query.
+  if (route === "verify-email" && hash.includes("token=")) {
+    switchView("verify-email");
+    renderVerifyResultPage();
+    return;
+  }
+
+  if (AUTH_ROUTES.has(route)) {
+    switchView(route);
     return;
   }
 }
+
+// Routes that render a full page rather than a storefront panel.
+const AUTH_ROUTES = new Set([
+  "login", "signup", "forgot-password", "reset-password", "verify-email",
+  "profile", "orders", "saved", "checkout", "confirmation",
+]);
 
 window.addEventListener("hashchange", handleRoute);
 
@@ -2011,7 +1887,7 @@ function openQuickView(listingId) {
   const availability = listingAvailability(listing.id);
   const saved = isSaved(listing.id);
   const discount = discountOf(listing);
-  const gallery = unique([safeImage(listing.image), FALLBACK_IMAGE]);
+  const gallery = listingGallery(listing);
   const facts = [
     ["Brand", listing.brand],
     ["Size", listing.size || "One size"],
@@ -2024,16 +1900,7 @@ function openQuickView(listingId) {
   dom.qvBody.innerHTML = `
     <div class="qv__gallery">
       <div class="qv__stage"><img id="qv-stage-img" src="${escapeHtml(gallery[0])}" alt="${escapeHtml(listing.title)}" /></div>
-      ${
-        gallery.length > 1
-          ? `<div class="qv__thumbs">${gallery
-              .map(
-                (src, i) =>
-                  `<button type="button" class="${i === 0 ? "is-active" : ""}" data-qv-thumb="${escapeHtml(src)}" aria-label="View image ${i + 1}"><img src="${escapeHtml(src)}" alt="" /></button>`,
-              )
-              .join("")}</div>`
-          : ""
-      }
+      ${galleryThumbs(listing, "qv")}
     </div>
     <div class="qv__info">
       <p class="qv__crumbs">Home / ${escapeHtml(listing.category)} / ${escapeHtml(listing.brand)}</p>
@@ -2093,12 +1960,12 @@ function renderAll() {
   renderAdmin();
 }
 
-dom.navButtons.forEach((button) => {
-  button.addEventListener("click", () => switchView(button.dataset.viewTarget));
-});
-
-dom.authModeButtons.forEach((button) => {
-  button.addEventListener("click", () => switchAuthMode(button.dataset.authMode));
+// Delegated so buttons rendered later (auth pages, admin, status panels) work too.
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-view-target]");
+  if (!target) return;
+  event.preventDefault();
+  switchView(target.dataset.viewTarget);
 });
 
 dom.categoryButtons.forEach((button) => {
@@ -2128,46 +1995,6 @@ dom.categoryButtons.forEach((button) => {
   });
 });
 
-dom.signupForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = new FormData(dom.signupForm);
-  const payload = {
-    name: form.get("name"),
-    email: form.get("email"),
-    password: form.get("password"),
-    role: form.get("role"),
-    phone: form.get("phone"),
-    city: form.get("city"),
-  };
-  try {
-    const { token, account } = await API.signup(payload);
-    API.setToken(token);
-    dom.signupForm.reset();
-    await refresh();
-    showToast(`Welcome to Bechdou, ${account.name}.`);
-  } catch (error) {
-    showToast(error.message);
-    if (error.status === 409) {
-      switchAuthMode("login");
-      dom.loginForm.elements.email.value = String(payload.email || "");
-    }
-  }
-});
-
-dom.loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = new FormData(dom.loginForm);
-  try {
-    const { token, account } = await API.login({ email: form.get("email"), password: form.get("password") });
-    API.setToken(token);
-    dom.loginForm.reset();
-    await refresh();
-    showToast(`Welcome back, ${account.name}.`);
-  } catch (error) {
-    showToast(error.message);
-  }
-});
-
 /* ---------- Image compression (client-side Canvas resize before upload) ---------- */
 function compressImage(dataUrl, maxPx = 1000, quality = 0.78) {
   return new Promise((resolve) => {
@@ -2194,24 +2021,40 @@ function compressImage(dataUrl, maxPx = 1000, quality = 0.78) {
   });
 }
 
-dom.imageFile.addEventListener("change", (event) => {
-  const [file] = event.target.files;
+const MAX_LISTING_IMAGES = 6;
+let uploadedImages = [];
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result));
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+dom.imageFile.addEventListener("change", async (event) => {
+  const files = Array.from(event.target.files || []).slice(0, MAX_LISTING_IMAGES);
+  uploadedImages = [];
   uploadedImageData = "";
 
-  if (!file) {
+  if (!files.length) {
     dom.imagePreview.innerHTML = "<span>No image selected</span>";
     renderListingAssistant();
     return;
   }
 
-  const reader = new FileReader();
-  reader.addEventListener("load", async () => {
-    const compressed = await compressImage(reader.result);
-    uploadedImageData = compressed;
-    dom.imagePreview.innerHTML = `<img src="${escapeHtml(compressed)}" alt="Selected listing preview" />`;
-    renderListingAssistant();
-  });
-  reader.readAsDataURL(file);
+  dom.imagePreview.innerHTML = "<span>Processing photos…</span>";
+  for (const file of files) {
+    const dataUrl = await readFileAsDataUrl(file);
+    uploadedImages.push(await compressImage(dataUrl));
+  }
+  uploadedImageData = uploadedImages[0] || "";
+
+  dom.imagePreview.innerHTML = uploadedImages
+    .map((src, i) => `<img src="${escapeHtml(src)}" alt="Listing photo ${i + 1}" />`)
+    .join("");
+  renderListingAssistant();
 });
 
 dom.listingForm.addEventListener("input", renderListingAssistant);
@@ -2223,8 +2066,7 @@ dom.listingForm.addEventListener("submit", async (event) => {
 
   if (!canSell(account)) {
     showToast(account ? "Switch to a seller account to list." : "Log in as a seller first.");
-    switchView("pulse");
-    switchAuthMode(account ? "signup" : "login");
+    if (!account) switchView("login");
     return;
   }
 
@@ -2245,6 +2087,7 @@ dom.listingForm.addEventListener("submit", async (event) => {
     flaws: form.get("flaws"),
     description: form.get("description"),
     image: uploadedImageData || imageUrl || undefined,
+    images: uploadedImages.length ? uploadedImages : imageUrl ? [imageUrl] : undefined,
     qualityChecks: {
       frontPhoto: form.get("hasFrontPhoto") === "on",
       backPhoto: form.get("hasBackPhoto") === "on",
@@ -2256,6 +2099,7 @@ dom.listingForm.addEventListener("submit", async (event) => {
   try {
     await API.createListing(payload);
     uploadedImageData = "";
+    uploadedImages = [];
     dom.listingForm.reset();
     dom.imagePreview.innerHTML = "<span>No image selected</span>";
     await refresh();
@@ -2273,8 +2117,7 @@ dom.orderForm.addEventListener("submit", async (event) => {
 
   if (!account) {
     showToast("Log in or create an account first.");
-    switchView("pulse");
-    switchAuthMode("login");
+    switchView("login");
     return;
   }
   if (!listing) {
@@ -2319,7 +2162,7 @@ dom.orderForm.addEventListener("submit", async (event) => {
     state.selectedListingId = "";
     dom.orderForm.reset();
     await refresh();
-    switchView("pulse");
+    switchView("orders");
     showToast("Checkout requested — pay Cash on Delivery.");
   } catch (error) {
     showToast(error.message);
@@ -2347,31 +2190,22 @@ document.addEventListener("click", async (event) => {
       showToast(`${listing.title} is ${availability.label.toLowerCase()}.`);
       return;
     }
-    if (!activeAccount()) {
-      showToast("Log in to request checkout.");
-      switchView("pulse");
-      switchAuthMode("login");
-      return;
-    }
-    state.selectedListingId = requestButton.dataset.requestId;
-    switchView("browse");
-    renderRequestPanel();
-    requestAnimationFrame(() =>
-      document.querySelector(".request-panel")?.scrollIntoView({ behavior: "smooth", block: "center" }),
-    );
+    closeQuickView();
+    openCheckout(requestButton.dataset.requestId);
     return;
   }
 
   if (saveButton) {
     if (!activeAccount()) {
       showToast("Log in to save pieces.");
-      switchView("pulse");
-      switchAuthMode("login");
+      switchView("login");
       return;
     }
     try {
       const { saved } = await API.toggleSave(saveButton.dataset.toggleSave);
       await refresh();
+      // Un-saving while viewing the Saved page should drop the card immediately.
+      if (dom.savedView.classList.contains("is-active")) renderSavedPage();
       showToast(saved ? "Saved to closet." : "Removed from saved.");
     } catch (error) {
       showToast(error.message);
@@ -2405,7 +2239,6 @@ document.addEventListener("click", async (event) => {
     API.logout();
     state.selectedListingId = "";
     await refresh();
-    switchAuthMode("login");
     switchView("home");
     showToast("Logged out.");
     return;
@@ -2445,41 +2278,6 @@ document.addEventListener("change", (event) => {
   // Real authentication is in place — admins cannot impersonate other users.
   event.target.value = state.currentUserId;
   showToast("Switch accounts by logging in with their email and password.");
-});
-
-dom.resetDemo.addEventListener("click", async () => {
-  try {
-    await API.reset();
-  } catch (error) {
-    showToast(error.status === 403 ? "Log in as admin (admin@bechdou.pk) to reset." : error.message);
-    return;
-  }
-  filters = {
-    category: "all",
-    search: "",
-    city: "all",
-    condition: "all",
-    minPrice: "",
-    maxPrice: "",
-    sort: "newest",
-    savedOnly: false,
-  };
-  uploadedImageData = "";
-  dom.searchInput.value = "";
-  dom.filterMinPrice.value = "";
-  dom.filterMaxPrice.value = "";
-  dom.filterSort.value = "newest";
-  dom.filterSaved.checked = false;
-  dom.categoryButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.category === "all");
-  });
-  dom.orderForm.reset();
-  dom.listingForm.reset();
-  dom.imagePreview.innerHTML = "<span>No image selected</span>";
-  homeReady = false;
-  await refresh();
-  switchView("home");
-  showToast("Demo data reset to seed.");
 });
 
 /* =====================================================================
@@ -2553,13 +2351,16 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const qvThumb = event.target.closest("[data-qv-thumb]");
-  if (qvThumb) {
-    const stage = document.getElementById("qv-stage-img");
-    if (stage) stage.src = qvThumb.dataset.qvThumb;
-    dom.qvBody
-      .querySelectorAll("[data-qv-thumb]")
-      .forEach((button) => button.classList.toggle("is-active", button === qvThumb));
+  // Works for both the quick view (#qv-stage-img) and product page (#pd-stage-img).
+  const thumb = event.target.closest("[data-gallery-thumb]");
+  if (thumb) {
+    const scope = thumb.dataset.galleryTarget;
+    const stage = document.getElementById(`${scope}-stage-img`);
+    if (stage) stage.src = thumb.dataset.galleryThumb;
+    thumb
+      .closest("[data-gallery-scope]")
+      ?.querySelectorAll("[data-gallery-thumb]")
+      .forEach((button) => button.classList.toggle("is-active", button === thumb));
     return;
   }
 
