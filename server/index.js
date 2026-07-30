@@ -5,14 +5,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { verifyPassword, signToken, verifyToken } from "./auth.js";
+import { verifyPassword, hashPassword, signToken, verifyToken, createLinkToken, hashLinkToken } from "./auth.js";
 import {
   seedIfEmpty, reseed,
-  getAccountById, getAccountRowByEmail, createAccount, listAccountsFull, publicSellerProfiles,
+  getAccountById, getAccountRowByEmail, getAccountRowById, getAccountByHandle, createAccount,
+  listAccountsFull, publicSellerProfiles,
+  updateAccountProfile, setAccountPassword, setEmailVerified, setAccountSuspended,
+  issueAuthToken, consumeAuthToken,
   listingsForViewer, approvedListings, getListingById, createListing, setListingStatus, incrementViews, toggleSave,
-  createOrder, ordersForViewer, updateOrder, updateOrderByReference,
+  updateListing, deleteListing, setListingSold,
+  createOrder, getOrderById, ordersForViewer, ordersForListing, updateOrder, updateOrderByReference,
+  markOrderShipped, setOrderPayout,
   addEvent, listEvents, marketStatus,
 } from "./db.js";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./email.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, "..");
@@ -22,12 +28,7 @@ const PORT = process.env.PORT || 4000;
 const COMMISSION_RATE = 0.15;
 const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
 const paymentOptions = [
-  { id: "stripe-checkout", label: "Stripe Checkout", status: "Card payment", note: "Hosted Stripe payment page; card data never touches Bechdou servers. Requires STRIPE_SECRET_KEY.", disabled: false },
-  { id: "stripe-shipping", label: "Stripe shipping rates", status: "Delivery fee", note: "Checkout can collect shipping address and rates; Bechdou still owns courier fulfillment.", disabled: true, checkout: false },
-  { id: "stripe-connect", label: "Stripe Connect", status: "Payouts", note: "Marketplace pattern for seller onboarding, application fees, and seller payouts.", disabled: true, checkout: false },
-  { id: "manual-admin", label: "Admin assisted checkout", status: "Fallback", note: "Temporary admin-created order route if a buyer cannot complete Stripe checkout.", disabled: false },
-  { id: "cash-on-delivery", label: "Cash on Delivery", status: "Recommended", note: "Buyer pays the courier in cash on delivery — the default across Pakistan.", disabled: false },
-  { id: "wallet-transfer", label: "Legacy wallet transfer", status: "Legacy demo", note: "Kept only so older seeded demo orders still display correctly.", disabled: true, checkout: false },
+  { id: "cash-on-delivery", label: "Cash on Delivery", status: "Available", note: "Pay the courier in cash when your order arrives — no card needed.", disabled: false },
 ];
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -89,9 +90,17 @@ function readToken(req) {
   const header = req.headers.authorization || "";
   return header.startsWith("Bearer ") ? header.slice(7) : null;
 }
-app.use((req, _res, next) => {
+app.use((req, res, next) => {
   const claims = verifyToken(readToken(req));
-  req.account = claims?.sub ? getAccountById(claims.sub, { full: true }) : null;
+  const account = claims?.sub ? getAccountById(claims.sub, { full: true }) : null;
+
+  // A suspension must take effect immediately — tokens issued before the
+  // suspension are otherwise valid for days.
+  if (account?.suspended) {
+    return res.status(403).json({ error: "This account is suspended. Contact support@bechdou.pk." });
+  }
+
+  req.account = account;
   next();
 });
 function requireAuth(req, res, next) {
@@ -132,26 +141,163 @@ const asyncRoute = (fn) => (req, res) => {
 /* =====================================================================
    AUTH
    ===================================================================== */
-app.post("/api/auth/signup", asyncRoute((req, res) => {
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+const RESET_TTL_MS = 60 * 60 * 1000;
+
+/* ---------- Rate limiting (in-memory, per IP+route) ----------
+   Slows down credential stuffing and stops the reset endpoint being used as a
+   mail cannon. A single-process store is enough for this deployment size. */
+const rateBuckets = new Map();
+
+function rateLimit({ windowMs, max, message }) {
+  return (req, res, next) => {
+    const key = `${req.ip}:${req.path}`;
+    const now = Date.now();
+    const hits = (rateBuckets.get(key) || []).filter((t) => now - t < windowMs);
+
+    if (hits.length >= max) {
+      const retryAfter = Math.ceil((windowMs - (now - hits[0])) / 1000);
+      res.set("Retry-After", String(retryAfter));
+      return res.status(429).json({ error: message });
+    }
+
+    hits.push(now);
+    rateBuckets.set(key, hits);
+    next();
+  };
+}
+
+// Keep the bucket map from growing without bound on a long-running process.
+setInterval(() => {
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  for (const [key, hits] of rateBuckets) {
+    const fresh = hits.filter((t) => t > cutoff);
+    if (fresh.length) rateBuckets.set(key, fresh);
+    else rateBuckets.delete(key);
+  }
+}, 15 * 60 * 1000).unref();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many login attempts. Please wait a few minutes and try again.",
+});
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "Too many accounts created from this device. Please try again later.",
+});
+const emailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "Too many email requests. Please wait before requesting another.",
+});
+
+async function issueVerificationEmail(accountRow) {
+  const { token, tokenHash } = createLinkToken();
+  issueAuthToken(accountRow.id, "verify-email", tokenHash, VERIFY_TTL_MS);
+  return sendVerificationEmail({ to: accountRow.email, name: accountRow.name, token });
+}
+
+app.post("/api/auth/signup", signupLimiter, asyncRoute(async (req, res) => {
   const { name, email, password, role, phone, city } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password are required." });
-  if (String(password).length < 6) return res.status(400).json({ error: "Password must be at least 6 characters." });
+  if (String(password).length < 8) return res.status(400).json({ error: "Password must be at least 8 characters." });
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email).trim())) {
+    return res.status(400).json({ error: "Enter a valid email address." });
+  }
   if (getAccountRowByEmail(email)) return res.status(409).json({ error: "An account already exists for this email." });
+
   const account = createAccount({ name, email, password, role, phone, city });
   addEvent("account", `${account.name} created a ${account.role} account.`, account.id, account.id);
-  res.status(201).json({ token: signToken({ sub: account.id, role: account.role }), account });
+  const delivery = await issueVerificationEmail(getAccountRowById(account.id));
+
+  res.status(201).json({
+    token: signToken({ sub: account.id, role: account.role }),
+    account,
+    emailSent: delivery.delivered,
+  });
 }));
 
-app.post("/api/auth/login", asyncRoute((req, res) => {
+app.post("/api/auth/login", loginLimiter, asyncRoute((req, res) => {
   const { email, password } = req.body || {};
   const row = getAccountRowByEmail(email);
   if (!row || !verifyPassword(password, row.password_hash)) {
     return res.status(401).json({ error: "Email or password did not match." });
   }
+  if (row.suspended) {
+    return res.status(403).json({ error: "This account is suspended. Contact support@bechdou.pk." });
+  }
   res.json({ token: signToken({ sub: row.id, role: row.role }), account: getAccountById(row.id, { full: true }) });
 }));
 
+app.post("/api/auth/verify-email", asyncRoute((req, res) => {
+  const accountId = consumeAuthToken(hashLinkToken(req.body?.token), "verify-email");
+  if (!accountId) return res.status(400).json({ error: "This verification link is invalid or has expired." });
+  setEmailVerified(accountId);
+  res.json({ account: getAccountById(accountId, { full: true }) });
+}));
+
+app.post("/api/auth/resend-verification", requireAuth, emailLimiter, asyncRoute(async (req, res) => {
+  const row = getAccountRowById(req.account.id);
+  if (row.email_verified) return res.json({ alreadyVerified: true });
+  const delivery = await issueVerificationEmail(row);
+  res.json({ emailSent: delivery.delivered });
+}));
+
+app.post("/api/auth/forgot-password", emailLimiter, asyncRoute(async (req, res) => {
+  const row = getAccountRowByEmail(req.body?.email);
+  // Always report success so the endpoint cannot be used to discover which
+  // emails have accounts.
+  if (row && !row.suspended) {
+    const { token, tokenHash } = createLinkToken();
+    issueAuthToken(row.id, "reset-password", tokenHash, RESET_TTL_MS);
+    await sendPasswordResetEmail({ to: row.email, name: row.name, token });
+  }
+  res.json({ ok: true });
+}));
+
+app.post("/api/auth/reset-password", asyncRoute((req, res) => {
+  const { token, password } = req.body || {};
+  if (String(password || "").length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters." });
+  }
+  const accountId = consumeAuthToken(hashLinkToken(token), "reset-password");
+  if (!accountId) return res.status(400).json({ error: "This reset link is invalid or has expired." });
+  setAccountPassword(accountId, hashPassword(password));
+  addEvent("account", "Password reset completed.", accountId, accountId);
+  const account = getAccountById(accountId, { full: true });
+  res.json({ token: signToken({ sub: account.id, role: account.role }), account });
+}));
+
 app.get("/api/auth/me", (req, res) => res.json({ account: req.account || null }));
+
+/* =====================================================================
+   PROFILES
+   ===================================================================== */
+app.patch("/api/profile", requireAuth, asyncRoute((req, res) => {
+  const { name, bio, handle, phone, city, avatar } = req.body || {};
+  const fields = { name, bio, handle, phone, city };
+
+  if (handle !== undefined) {
+    const normalized = String(handle).trim().replace(/^@/, "").toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (normalized.length < 3) return res.status(400).json({ error: "Username must be at least 3 characters." });
+    const taken = getAccountByHandle(normalized);
+    if (taken && taken.id !== req.account.id) return res.status(409).json({ error: "That username is taken." });
+    fields.handle = `@${normalized}`;
+  }
+  if (avatar !== undefined) fields.avatar = persistImage(avatar, `avatar-${req.account.id}-${Date.now().toString(36)}`);
+
+  res.json({ account: updateAccountProfile(req.account.id, fields) });
+}));
+
+app.get("/api/sellers/:handle", asyncRoute((req, res) => {
+  const row = getAccountByHandle(req.params.handle);
+  if (!row) return res.status(404).json({ error: "Closet not found." });
+  const seller = getAccountById(row.id);
+  const listings = approvedListings().filter((l) => l.sellerId === row.id);
+  res.json({ seller, listings });
+}));
 
 /* =====================================================================
    BOOTSTRAP — one call hydrates the whole app
@@ -193,14 +339,120 @@ app.get("/api/listings/:id", asyncRoute((req, res) => {
   res.json({ listing });
 }));
 
+const MAX_IMAGES = 6;
+
+function persistImages(images, id) {
+  if (!Array.isArray(images)) return [];
+  return images
+    .slice(0, MAX_IMAGES)
+    .map((img, index) => persistImage(img, `${id}-${index}`))
+    .filter(Boolean);
+}
+
+const MAX_PRICE = 10_000_000; // Rs 10m — well above any realistic resale piece
+
+// Shared by create and edit so both paths reject the same bad input.
+function validateListing(data, { partial = false } = {}) {
+  if (!partial || data.title !== undefined) {
+    if (!String(data.title || "").trim()) return "A title is required.";
+    if (String(data.title).trim().length > 120) return "Title must be 120 characters or fewer.";
+  }
+  if (!partial || data.price !== undefined) {
+    const price = Number(data.price);
+    if (!Number.isFinite(price) || price <= 0) return "Enter a price greater than zero.";
+    if (price > MAX_PRICE) return "That price looks too high — please check it.";
+  }
+  if (data.retailPrice !== undefined && data.retailPrice !== "" && data.retailPrice !== null) {
+    const retail = Number(data.retailPrice);
+    if (!Number.isFinite(retail) || retail < 0) return "Retail price must be a positive number.";
+    if (retail > MAX_PRICE) return "That retail price looks too high — please check it.";
+  }
+  if (String(data.description || "").length > 4000) return "Description is too long.";
+  return null;
+}
+
 app.post("/api/listings", requireRole("seller", "admin"), asyncRoute((req, res) => {
   const data = req.body || {};
-  if (!data.title || !data.price) return res.status(400).json({ error: "Title and price are required." });
+  const invalid = validateListing(data);
+  if (invalid) return res.status(400).json({ error: invalid });
   const id = `lst-${Date.now().toString(36)}`;
-  data.image = persistImage(data.image, id);
+
+  const gallery = persistImages(data.images, id);
+  if (gallery.length) {
+    data.images = gallery;
+    data.image = gallery[0];
+  } else {
+    data.image = persistImage(data.image, id);
+    data.images = [data.image];
+  }
+
   const listing = createListing(data, req.account);
   addEvent("listing", `${listing.title} submitted for approval by ${req.account.name}.`, req.account.id, listing.id);
   res.status(201).json({ listing });
+}));
+
+// Sellers may edit or remove their own listings; admins may act on any.
+function loadOwnedListing(req, res) {
+  const listing = getListingById(req.params.id);
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found." });
+    return null;
+  }
+  if (req.account.role !== "admin" && listing.sellerId !== req.account.id) {
+    res.status(403).json({ error: "This listing belongs to another seller." });
+    return null;
+  }
+  return listing;
+}
+
+app.patch("/api/listings/:id", requireAuth, asyncRoute((req, res) => {
+  const existing = loadOwnedListing(req, res);
+  if (!existing) return;
+
+  const invalid = validateListing(req.body || {}, { partial: true });
+  if (invalid) return res.status(400).json({ error: invalid });
+
+  const data = { ...req.body };
+  const gallery = persistImages(data.images, `${existing.id}-${Date.now().toString(36)}`);
+  if (gallery.length) {
+    data.images = gallery;
+    data.image = gallery[0];
+  } else {
+    delete data.images;
+    delete data.image;
+  }
+
+  const listing = updateListing(existing.id, data);
+  addEvent("listing", `${listing.title} was edited by ${req.account.name}.`, req.account.id, listing.id);
+  res.json({ listing });
+}));
+
+app.delete("/api/listings/:id", requireAuth, asyncRoute((req, res) => {
+  const listing = loadOwnedListing(req, res);
+  if (!listing) return;
+
+  // Deleting a piece mid-fulfilment would orphan the buyer's order.
+  const live = ordersForListing(listing.id).filter(
+    (o) => !["Cancelled", "Delivered"].includes(o.status),
+  );
+  if (live.length) {
+    return res.status(409).json({
+      error: "This piece has an order in progress. Cancel or complete the order first.",
+    });
+  }
+
+  deleteListing(listing.id);
+  addEvent("listing", `${listing.title} was removed by ${req.account.name}.`, req.account.id, listing.id);
+  res.json({ ok: true });
+}));
+
+app.post("/api/listings/:id/sold", requireAuth, asyncRoute((req, res) => {
+  const existing = loadOwnedListing(req, res);
+  if (!existing) return;
+  const sold = req.body?.sold !== false;
+  const listing = setListingSold(existing.id, sold);
+  addEvent("listing", `${listing.title} marked ${sold ? "sold" : "available"}.`, req.account.id, listing.id);
+  res.json({ listing });
 }));
 
 app.post("/api/listings/:id/approve", requireRole("admin"), asyncRoute((req, res) => {
@@ -295,20 +547,28 @@ app.post("/api/orders", requireAuth, asyncRoute((req, res) => {
   const listing = getListingById(data.listingId);
   if (!listing) return res.status(404).json({ error: "Listing not found." });
   if (listing.status !== "approved") return res.status(400).json({ error: "This piece is not available." });
-  const option = paymentOptions.find((o) => o.id === data.paymentMethod && !o.disabled);
+  if (listing.sold) return res.status(409).json({ error: "This piece has already sold." });
+  if (listing.sellerId === req.account.id) return res.status(400).json({ error: "You cannot buy your own listing." });
+  if (!String(data.contact || "").trim()) return res.status(400).json({ error: "A contact number is required for delivery." });
+  if (!String(data.deliveryAddress || "").trim()) return res.status(400).json({ error: "A delivery address is required." });
+
   const order = createOrder({
     listingId: listing.id,
     buyerId: req.account.id,
     buyerName: data.buyerName || req.account.name,
+    sellerId: listing.sellerId,
     contact: data.contact,
-    deliveryCity: data.deliveryCity,
+    deliveryCity: data.deliveryCity || req.account.city,
+    deliveryAddress: data.deliveryAddress,
     note: data.note,
     amount: listing.price,
-    paymentMethod: option ? option.id : "cash-on-delivery",
-    paymentStatus: option && option.id.startsWith("stripe") ? "Awaiting Stripe" : "Due on delivery",
-    paymentReference: data.paymentReference,
+    paymentMethod: "cash-on-delivery",
+    paymentStatus: "Due on delivery",
     status: "Requested",
   });
+
+  // Reserve the piece so a second buyer cannot order the same item.
+  setListingSold(listing.id, true);
   addEvent("order", `Checkout requested for ${listing.title}.`, req.account.id, order.id);
   res.status(201).json({ order });
 }));
@@ -331,10 +591,60 @@ app.post("/api/orders/:id/status", requireRole("admin"), asyncRoute((req, res) =
   const fields = { status: action.status };
   if (action.payment_status) fields.payment_status = action.payment_status;
   if (req.body.action === "cancel") fields.payment_status = "Cancelled";
+
+  const existing = getOrderById(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Order not found." });
+
   const order = updateOrder(req.params.id, fields);
-  if (!order) return res.status(404).json({ error: "Order not found." });
+  // Cancelling frees the piece; delivering retires it for good.
+  if (req.body.action === "cancel") setListingSold(order.listingId, false);
+  if (req.body.action === "delivered") setListingSold(order.listingId, true);
+
   const listing = getListingById(order.listingId);
   addEvent("order", `${action.verb} — ${listing?.title || "order"}.`, req.account.id, order.id);
+  res.json({ order });
+}));
+
+// Buyers may cancel their own order until it has been dispatched.
+app.post("/api/orders/:id/cancel", requireAuth, asyncRoute((req, res) => {
+  const existing = getOrderById(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Order not found." });
+  if (existing.buyerId !== req.account.id) {
+    return res.status(403).json({ error: "This order belongs to another buyer." });
+  }
+  if (existing.status === "Cancelled") return res.status(400).json({ error: "This order is already cancelled." });
+  if (existing.shippedAt || ["Dispatched", "Delivered"].includes(existing.status)) {
+    return res.status(400).json({ error: "This order has already shipped and can no longer be cancelled." });
+  }
+
+  const order = updateOrder(existing.id, { status: "Cancelled", payment_status: "Cancelled" });
+  setListingSold(order.listingId, false);
+  const listing = getListingById(order.listingId);
+  addEvent("order", `${listing?.title || "Order"} cancelled by buyer.`, req.account.id, order.id);
+  res.json({ order });
+}));
+
+// Sellers dispatch their own sales; admins may dispatch any order.
+app.post("/api/orders/:id/ship", requireAuth, asyncRoute((req, res) => {
+  const existing = getOrderById(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Order not found." });
+  if (req.account.role !== "admin" && existing.sellerId !== req.account.id) {
+    return res.status(403).json({ error: "This order belongs to another seller." });
+  }
+  if (existing.status === "Cancelled") return res.status(400).json({ error: "Cancelled orders cannot be shipped." });
+
+  const order = markOrderShipped(existing.id);
+  const listing = getListingById(order.listingId);
+  addEvent("order", `${listing?.title || "Order"} marked shipped by ${req.account.name}.`, req.account.id, order.id);
+  res.json({ order });
+}));
+
+app.post("/api/orders/:id/payout", requireRole("admin"), asyncRoute((req, res) => {
+  const existing = getOrderById(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Order not found." });
+  const status = req.body?.payoutStatus === "unpaid" ? "unpaid" : "paid";
+  const order = setOrderPayout(existing.id, status);
+  addEvent("payment", `Seller payout marked ${status} for order ${order.id}.`, req.account.id, order.id);
   res.json({ order });
 }));
 
@@ -343,6 +653,19 @@ app.post("/api/orders/:id/status", requireRole("admin"), asyncRoute((req, res) =
    ===================================================================== */
 app.get("/api/accounts", requireRole("admin"), asyncRoute((req, res) => {
   res.json({ accounts: listAccountsFull() });
+}));
+
+app.post("/api/accounts/:id/suspend", requireRole("admin"), asyncRoute((req, res) => {
+  if (req.params.id === req.account.id) {
+    return res.status(400).json({ error: "You cannot suspend your own admin account." });
+  }
+  const target = getAccountRowById(req.params.id);
+  if (!target) return res.status(404).json({ error: "Account not found." });
+
+  const suspended = req.body?.suspended !== false;
+  const account = setAccountSuspended(target.id, suspended);
+  addEvent("account", `${account.name} was ${suspended ? "suspended" : "reinstated"}.`, req.account.id, account.id);
+  res.json({ account });
 }));
 
 app.post("/api/reset", requireRole("admin"), asyncRoute((req, res) => {

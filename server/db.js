@@ -89,7 +89,37 @@ db.exec(`
     entity_id TEXT,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS auth_tokens (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    purpose TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_auth_tokens_hash ON auth_tokens (token_hash);
 `);
+
+/* ---------- Migrations (additive columns for pre-existing databases) ---------- */
+function addColumn(table, column, definition) {
+  const existing = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (existing.some((col) => col.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+addColumn("accounts", "bio", "TEXT");
+addColumn("accounts", "avatar", "TEXT");
+addColumn("accounts", "email_verified", "INTEGER DEFAULT 0");
+addColumn("accounts", "suspended", "INTEGER DEFAULT 0");
+addColumn("listings", "images", "TEXT");
+addColumn("listings", "sold", "INTEGER DEFAULT 0");
+addColumn("orders", "seller_id", "TEXT");
+addColumn("orders", "shipped_at", "TEXT");
+addColumn("orders", "payout_status", "TEXT DEFAULT 'unpaid'");
+addColumn("orders", "delivery_address", "TEXT");
 
 /* ---------- ID helper ---------- */
 export function makeId(prefix = "id") {
@@ -97,6 +127,17 @@ export function makeId(prefix = "id") {
 }
 
 /* ---------- Mappers (row -> frontend shape) ---------- */
+// Listings predating multi-image upload only have the single `image` column.
+function parseImages(raw, fallback) {
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch {}
+  }
+  return fallback ? [fallback] : [];
+}
+
 function rowToListing(row, savedBy = []) {
   return {
     id: row.id,
@@ -116,6 +157,8 @@ function rowToListing(row, savedBy = []) {
     sellerName: row.seller_name,
     description: row.description,
     image: row.image,
+    images: parseImages(row.images, row.image),
+    sold: !!row.sold,
     status: row.status,
     qualityChecks: {
       frontPhoto: !!row.front_photo,
@@ -137,6 +180,8 @@ function rowToAccount(row, { full = false, savedIds = [] } = {}) {
     role: row.role,
     city: row.city,
     handle: row.handle,
+    bio: row.bio,
+    avatar: row.avatar,
     trustScore: row.trust_score,
     savedListingIds: savedIds,
     createdAt: row.created_at,
@@ -144,6 +189,8 @@ function rowToAccount(row, { full = false, savedIds = [] } = {}) {
   if (full) {
     account.email = row.email;
     account.phone = row.phone;
+    account.emailVerified = !!row.email_verified;
+    account.suspended = !!row.suspended;
   }
   return account;
 }
@@ -154,14 +201,18 @@ function rowToOrder(row) {
     listingId: row.listing_id,
     buyerId: row.buyer_id,
     buyerName: row.buyer_name,
+    sellerId: row.seller_id,
     contact: row.contact,
     deliveryCity: row.delivery_city,
+    deliveryAddress: row.delivery_address,
     note: row.note,
     amount: row.amount,
     paymentMethod: row.payment_method,
     paymentStatus: row.payment_status,
     paymentReference: row.payment_reference,
     status: row.status,
+    shippedAt: row.shipped_at,
+    payoutStatus: row.payout_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -229,6 +280,63 @@ export function createAccount({ name, email, password, role, phone, city, handle
     account.phone, account.city, account.handle, account.trust_score, account.created_at,
   );
   return getAccountById(account.id, { full: true });
+}
+
+const PROFILE_COLUMNS = { name: "name", bio: "bio", avatar: "avatar", handle: "handle", phone: "phone", city: "city" };
+
+export function updateAccountProfile(id, fields) {
+  const sets = [];
+  const values = [];
+  for (const [key, column] of Object.entries(PROFILE_COLUMNS)) {
+    if (fields[key] === undefined) continue;
+    sets.push(`${column} = ?`);
+    values.push(typeof fields[key] === "string" ? fields[key].trim() : fields[key]);
+  }
+  if (sets.length) db.prepare(`UPDATE accounts SET ${sets.join(", ")} WHERE id = ?`).run(...values, id);
+  return getAccountById(id, { full: true });
+}
+
+export function setAccountPassword(id, passwordHash) {
+  db.prepare("UPDATE accounts SET password_hash = ? WHERE id = ?").run(passwordHash, id);
+}
+
+export function setEmailVerified(id) {
+  db.prepare("UPDATE accounts SET email_verified = 1 WHERE id = ?").run(id);
+}
+
+export function setAccountSuspended(id, suspended) {
+  db.prepare("UPDATE accounts SET suspended = ? WHERE id = ?").run(suspended ? 1 : 0, id);
+  return getAccountById(id, { full: true });
+}
+
+export function getAccountByHandle(handle) {
+  const normalized = String(handle || "").trim().replace(/^@/, "").toLowerCase();
+  return db
+    .prepare("SELECT * FROM accounts WHERE LOWER(REPLACE(handle, '@', '')) = ?")
+    .get(normalized);
+}
+
+/* ---------- Single-use auth links ---------- */
+export function issueAuthToken(accountId, purpose, tokenHash, ttlMs) {
+  // Only one live link per purpose — issuing a new one invalidates the old.
+  db.prepare("DELETE FROM auth_tokens WHERE account_id = ? AND purpose = ?").run(accountId, purpose);
+  db.prepare(
+    `INSERT INTO auth_tokens (id, account_id, token_hash, purpose, expires_at, created_at)
+     VALUES (?,?,?,?,?,?)`,
+  ).run(
+    makeId("tok"), accountId, tokenHash, purpose,
+    new Date(Date.now() + ttlMs).toISOString(), new Date().toISOString(),
+  );
+}
+
+export function consumeAuthToken(tokenHash, purpose) {
+  const row = db
+    .prepare("SELECT * FROM auth_tokens WHERE token_hash = ? AND purpose = ?")
+    .get(tokenHash, purpose);
+  if (!row || row.used_at) return null;
+  if (new Date(row.expires_at).getTime() < Date.now()) return null;
+  db.prepare("UPDATE auth_tokens SET used_at = ? WHERE id = ?").run(new Date().toISOString(), row.id);
+  return row.account_id;
 }
 
 export function listAccountsFull() {
@@ -317,6 +425,7 @@ export function createListing(data, seller) {
     seller_name: seller.name,
     description: String(data.description || "").trim(),
     image: data.image || FALLBACK_IMAGE,
+    images: JSON.stringify(Array.isArray(data.images) && data.images.length ? data.images : [data.image || FALLBACK_IMAGE]),
     status: "pending",
     front_photo: data.qualityChecks?.frontPhoto ? 1 : 0,
     back_photo: data.qualityChecks?.backPhoto ? 1 : 0,
@@ -328,17 +437,55 @@ export function createListing(data, seller) {
   };
   db.prepare(
     `INSERT INTO listings (id,title,brand,price,retail_price,category,size,condition,location,color,fabric,
-      measurements,flaws,seller_id,seller_name,description,image,status,front_photo,back_photo,label_photo,
+      measurements,flaws,seller_id,seller_name,description,image,images,status,front_photo,back_photo,label_photo,
       measurements_check,views,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     listing.id, listing.title, listing.brand, listing.price, listing.retail_price, listing.category,
     listing.size, listing.condition, listing.location, listing.color, listing.fabric, listing.measurements,
-    listing.flaws, listing.seller_id, listing.seller_name, listing.description, listing.image, listing.status,
-    listing.front_photo, listing.back_photo, listing.label_photo, listing.measurements_check, listing.views,
-    listing.created_at, listing.updated_at,
+    listing.flaws, listing.seller_id, listing.seller_name, listing.description, listing.image, listing.images,
+    listing.status, listing.front_photo, listing.back_photo, listing.label_photo, listing.measurements_check,
+    listing.views, listing.created_at, listing.updated_at,
   );
   return getListingById(listing.id);
+}
+
+const LISTING_COLUMNS = {
+  title: "title", brand: "brand", price: "price", retailPrice: "retail_price",
+  category: "category", size: "size", condition: "condition", location: "location",
+  color: "color", fabric: "fabric", measurements: "measurements", flaws: "flaws",
+  description: "description", image: "image",
+};
+
+export function updateListing(id, fields) {
+  const sets = [];
+  const values = [];
+  for (const [key, column] of Object.entries(LISTING_COLUMNS)) {
+    if (fields[key] === undefined) continue;
+    sets.push(`${column} = ?`);
+    const raw = fields[key];
+    values.push(key === "price" || key === "retailPrice" ? Number(raw) || 0 : typeof raw === "string" ? raw.trim() : raw);
+  }
+  if (Array.isArray(fields.images) && fields.images.length) {
+    sets.push("images = ?");
+    values.push(JSON.stringify(fields.images));
+  }
+  if (!sets.length) return getListingById(id);
+  sets.push("updated_at = ?");
+  values.push(new Date().toISOString());
+  db.prepare(`UPDATE listings SET ${sets.join(", ")} WHERE id = ?`).run(...values, id);
+  return getListingById(id);
+}
+
+export function deleteListing(id) {
+  db.prepare("DELETE FROM saves WHERE listing_id = ?").run(id);
+  db.prepare("DELETE FROM listings WHERE id = ?").run(id);
+}
+
+export function setListingSold(id, sold) {
+  db.prepare("UPDATE listings SET sold = ?, updated_at = ? WHERE id = ?")
+    .run(sold ? 1 : 0, new Date().toISOString(), id);
+  return getListingById(id);
 }
 
 export function setListingStatus(id, status) {
@@ -370,8 +517,10 @@ export function createOrder(data) {
     listing_id: data.listingId,
     buyer_id: data.buyerId || null,
     buyer_name: String(data.buyerName || "").trim(),
+    seller_id: data.sellerId || null,
     contact: String(data.contact || "").trim(),
     delivery_city: String(data.deliveryCity || "").trim(),
+    delivery_address: String(data.deliveryAddress || "").trim(),
     note: String(data.note || "").trim(),
     amount: Number(data.amount) || 0,
     payment_method: data.paymentMethod || "manual-admin",
@@ -382,13 +531,13 @@ export function createOrder(data) {
     updated_at: now,
   };
   db.prepare(
-    `INSERT INTO orders (id,listing_id,buyer_id,buyer_name,contact,delivery_city,note,amount,
-      payment_method,payment_status,payment_reference,status,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO orders (id,listing_id,buyer_id,buyer_name,seller_id,contact,delivery_city,delivery_address,
+      note,amount,payment_method,payment_status,payment_reference,status,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
-    order.id, order.listing_id, order.buyer_id, order.buyer_name, order.contact, order.delivery_city,
-    order.note, order.amount, order.payment_method, order.payment_status, order.payment_reference,
-    order.status, order.created_at, order.updated_at,
+    order.id, order.listing_id, order.buyer_id, order.buyer_name, order.seller_id, order.contact,
+    order.delivery_city, order.delivery_address, order.note, order.amount, order.payment_method,
+    order.payment_status, order.payment_reference, order.status, order.created_at, order.updated_at,
   );
   return getOrderById(order.id);
 }
@@ -423,6 +572,26 @@ export function updateOrder(id, fields) {
   db.prepare(
     `UPDATE orders SET payment_status = ?, payment_reference = ?, status = ?, updated_at = ? WHERE id = ?`,
   ).run(next.payment_status, next.payment_reference, next.status, next.updated_at, id);
+  return getOrderById(id);
+}
+
+export function ordersForListing(listingId) {
+  return db
+    .prepare("SELECT * FROM orders WHERE listing_id = ? ORDER BY created_at DESC")
+    .all(listingId)
+    .map(rowToOrder);
+}
+
+export function markOrderShipped(id) {
+  const now = new Date().toISOString();
+  db.prepare("UPDATE orders SET status = 'Dispatched', shipped_at = ?, updated_at = ? WHERE id = ?")
+    .run(now, now, id);
+  return getOrderById(id);
+}
+
+export function setOrderPayout(id, payoutStatus) {
+  db.prepare("UPDATE orders SET payout_status = ?, updated_at = ? WHERE id = ?")
+    .run(payoutStatus, new Date().toISOString(), id);
   return getOrderById(id);
 }
 
