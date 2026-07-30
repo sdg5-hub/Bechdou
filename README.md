@@ -148,14 +148,35 @@ curl -s -X POST localhost:4000/api/listings/lst-pending-bag/approve \
 
 Environment variables (all optional):
 
-| Variable          | Default                | Notes                            |
-|-------------------|------------------------|----------------------------------|
-| `PORT`            | `4000`                 | HTTP port                        |
-| `BECHDOU_SECRET`  | dev secret             | **Set this in production** (signs tokens) |
-| `BECHDOU_DB`      | `server/bechdou.db`    | SQLite file path                 |
+| Variable             | Default                | Notes                            |
+|----------------------|------------------------|----------------------------------|
+| `PORT`               | `4000`                 | HTTP port                        |
+| `BECHDOU_SECRET`     | dev secret             | **Set this in production** (signs tokens) |
+| `BECHDOU_DB`         | `server/bechdou.db`    | SQLite file path                 |
+| `RESEND_API_KEY`     | —                      | Enables real email delivery      |
+| `BECHDOU_FROM_EMAIL` | `onboarding@resend.dev`| Sender address on outgoing email |
+| `BECHDOU_APP_URL`    | `http://localhost:4000`| Base URL used in email links     |
 
 To wipe and re-seed, stop the server, delete `server/bechdou.db*`, and restart —
 or just hit **Reset** in the UI as admin.
+
+### Email setup (verification + password reset)
+
+Email uses [Resend](https://resend.com)'s REST API — no npm package required.
+
+1. Create a free Resend account and generate an API key.
+2. Verify your sending domain (or use `onboarding@resend.dev` for testing).
+3. Set the variables and restart:
+
+```bash
+RESEND_API_KEY=re_xxxxxxxx
+BECHDOU_FROM_EMAIL="Bechdou <no-reply@yourdomain.pk>"
+BECHDOU_APP_URL=https://yourdomain.pk
+```
+
+**Without `RESEND_API_KEY` the app still works** — verification and reset links
+are printed to the server console instead of being emailed, so you can develop
+and test the full flow locally before wiring up a provider.
 
 ---
 

@@ -12,6 +12,9 @@ server/*.db-shm
 server/uploads/*
 !server/uploads/.gitkeep
 
+# Local tooling / editor config
+.claude/
+
 # OS / editor cruft
 .DS_Store
 **/.DS_Store
