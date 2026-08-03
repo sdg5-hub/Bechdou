@@ -17,7 +17,7 @@ order operations, and a real REST API behind it.
 - Cinematic hero, trending drops, curated collections, shop-by-category
 - Featured **seller closets** with verified badges, followers, trust scores
 - Elevated product cards (seller identity, likes, hover quick-actions, skeletons)
-- Product **quick-view** with image gallery, COD trust, and WhatsApp deep-link
+- Product **quick-view** with image gallery, buyer trust badges, and WhatsApp deep-link
 - Search, filters (city / condition / price / sort) and "saved" closet
 - Installable **PWA** (manifest + service worker + "Add to Homescreen")
 - Mobile sticky bottom nav, scroll-reveal animations, `prefers-reduced-motion`
@@ -26,7 +26,8 @@ order operations, and a real REST API behind it.
 - **Auth & roles** — buyer / seller / admin, scrypt-hashed passwords, JWT sessions
 - **Sellers** submit listings (with photo upload) for review
 - **Admins** approve / reject listings and run the order desk
-- **Orders** — Cash on Delivery checkout, QC → dispatch → delivered lifecycle
+- **Orders** — pay Bechdou directly via JazzCash, EasyPaisa, or bank transfer, then QC → dispatch → delivered
+- **Commission** — Bechdou keeps 20% of each sale; admin sees exactly what to send each seller
 - **Saves/likes**, marketplace pulse (GMV, metrics), activity feed, audit log
 - Role-scoped data: buyers see their own orders, admins see everything
 
@@ -80,7 +81,7 @@ All seeded accounts use the password **`bechdou123`**:
 | Admin  | `admin@bechdou.pk`   | Approve listings, run orders, reset data |
 | Seller | `aiza@example.com`   | List items, manage their closet          |
 | Seller | `noor@example.com`   | List items, manage their closet          |
-| Buyer  | `mina@example.com`   | Browse, save, request COD checkout       |
+| Buyer  | `mina@example.com`   | Browse, save, checkout via JazzCash/EasyPaisa/bank |
 
 Log in from the **Account** tab (mobile bottom nav) or the **Pulse / Browse**
 side panel on desktop. Use **Reset** (as admin) to restore the seed data.
@@ -124,9 +125,11 @@ All responses are JSON. Authenticated requests send `Authorization: Bearer <toke
 | POST   | `/api/listings/:id/approve`     | admin     | Approve a listing                    |
 | POST   | `/api/listings/:id/reject`      | admin     | Reject a listing                     |
 | POST   | `/api/listings/:id/save`        | any user  | Toggle save/like                     |
-| POST   | `/api/orders`                   | any user  | Request COD checkout                 |
+| POST   | `/api/orders`                   | any user  | Checkout (JazzCash/EasyPaisa/bank + reference) |
 | GET    | `/api/orders`                   | any user  | Orders (scoped by role)              |
-| POST   | `/api/orders/:id/status`        | admin     | `paid` / `qc` / `dispatch` / `delivered` / `cancel` |
+| POST   | `/api/orders/:id/cancel`        | buyer     | Cancel own order before dispatch     |
+| POST   | `/api/orders/:id/status`        | admin     | `paid` (confirm payment) / `qc` / `dispatch` / `delivered` / `cancel` |
+| POST   | `/api/orders/:id/payout`        | admin     | Mark seller payout sent/unsent       |
 | GET    | `/api/accounts`                 | admin     | All accounts                         |
 | POST   | `/api/reset`                    | admin     | Restore seed data                    |
 
@@ -156,9 +159,18 @@ Environment variables (all optional):
 | `RESEND_API_KEY`     | —                      | Enables real email delivery      |
 | `BECHDOU_FROM_EMAIL` | `onboarding@resend.dev`| Sender address on outgoing email |
 | `BECHDOU_APP_URL`    | `http://localhost:4000`| Base URL used in email links     |
+| `JAZZCASH_ACCOUNT_TITLE` / `JAZZCASH_ACCOUNT_NUMBER` | placeholder | Shown to buyers at checkout — **set to your real JazzCash details before launch** |
+| `EASYPAISA_ACCOUNT_TITLE` / `EASYPAISA_ACCOUNT_NUMBER` | placeholder | Shown to buyers at checkout — **set to your real EasyPaisa details before launch** |
+| `BANK_ACCOUNT_TITLE` / `BANK_ACCOUNT_NUMBER` / `BANK_NAME` | placeholder | Shown to buyers at checkout — **set to your real bank details before launch** |
 
 To wipe and re-seed, stop the server, delete `server/bechdou.db*`, and restart —
 or just hit **Reset** in the UI as admin.
+
+**Payments are manual, not automated.** There is no payment gateway — buyers
+send money directly to Bechdou's own JazzCash/EasyPaisa/bank account and enter
+the transaction ID at checkout. An admin confirms the payment landed (Orders
+tab), then the Payouts tab shows exactly how much of that sale is Bechdou's
+20% commission and how much to send the seller.
 
 ### Email setup (verification + password reset)
 
