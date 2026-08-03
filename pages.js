@@ -364,3 +364,144 @@ async function renderVerifyResultPage() {
   }
   window.history.replaceState(null, "", location.pathname);
 }
+
+/* =====================================================================
+   STATIC INFORMATION PAGES  (About, Payments, Buyer Protection, etc.)
+   One data-driven renderer instead of duplicating page boilerplate.
+   ===================================================================== */
+const STATIC_PAGES = {
+  about: {
+    eyebrow: "Our story",
+    title: "About Bechdou",
+    body: `
+      <p>Bechdou is a community resale marketplace built for Pakistan's mobile-first
+      shoppers. We connect people who've outgrown pieces they love with buyers looking
+      for something preloved, verified, and priced fairly.</p>
+      <p>Every closet on Bechdou is reviewed before it goes live, and every listing is
+      checked for photos and honest condition notes before buyers can request it.
+      We're a small, early team — if something looks off or you have an idea for us,
+      tell us. <button class="link-inline" type="button" data-view-target="contact">Get in touch</button>.</p>
+    `,
+  },
+  payments: {
+    eyebrow: "How it works",
+    title: "Payments & payouts",
+    body: `
+      <h2>How buyers pay</h2>
+      <p>Bechdou does not use a card gateway. When you check out, you send the full
+      amount directly to one of Bechdou's own accounts — JazzCash, EasyPaisa, or bank
+      transfer — and enter the transaction ID at checkout. An admin confirms the
+      payment landed, then your piece is QC'd and dispatched.</p>
+      <h2>How sellers get paid</h2>
+      <p>Bechdou keeps a 20% commission on every completed sale to run the platform,
+      moderate listings, and handle quality checks. The remaining 80% is sent to the
+      seller once the sale is confirmed — sellers can see this breakdown on every order.</p>
+      <h2>Why not pay the seller directly?</h2>
+      <p>Routing payment through Bechdou first is what makes buyer protection and QC
+      possible — if a piece doesn't pass inspection, the sale can be unwound before
+      any money reaches the seller.</p>
+    `,
+  },
+  "buyer-protection": {
+    eyebrow: "Shop with confidence",
+    title: "Buyer Protection",
+    body: `
+      <p>Every order is QC'd before it leaves a seller's closet. If a listing was
+      misrepresented, tell us before you confirm delivery and we'll step in.</p>
+      <h2>Cancelling an order</h2>
+      <p>You can cancel any order yourself, free, any time before it's marked
+      dispatched — find it under <button class="link-inline" type="button" data-view-target="orders">My orders</button>.
+      Once an order ships, cancellations go through Bechdou support instead.</p>
+      <h2>Payment safety</h2>
+      <p>Your payment goes to Bechdou, not directly to a stranger's personal wallet.
+      We only release a seller's payout after the sale is confirmed.</p>
+    `,
+  },
+  "shipping-delivery": {
+    eyebrow: "Getting your order",
+    title: "Shipping & Delivery",
+    body: `
+      <p>Once your payment is confirmed, sellers dispatch through standard courier
+      services nationwide. Delivery timing depends on the seller's city and the
+      courier's own schedule — your order page always shows the current status.</p>
+      <h2>Tracking your order</h2>
+      <p>Check <button class="link-inline" type="button" data-view-target="orders">My orders</button>
+      any time for live status: requested, payment confirmed, QC passed, dispatched, delivered.</p>
+    `,
+  },
+  "seller-guide": {
+    eyebrow: "For sellers",
+    title: "Seller Guide",
+    body: `
+      <p>Listing on Bechdou is free. Every submission is reviewed by an admin before
+      it goes live, so give buyers a reason to trust it.</p>
+      <h2>What gets approved fastest</h2>
+      <ul>
+        <li>Clear front, back, and label photos in good light</li>
+        <li>An honest condition note — mention marks, pulls, or repairs</li>
+        <li>Accurate measurements, not just a size label</li>
+        <li>A fair price relative to the item's retail value and condition</li>
+      </ul>
+      <h2>Getting paid</h2>
+      <p>Bechdou keeps 20% commission per sale; the rest is sent to you once the
+      buyer's payment is confirmed. See
+      <button class="link-inline" type="button" data-view-target="payments">Payments & payouts</button> for the full breakdown.</p>
+    `,
+  },
+  contact: {
+    eyebrow: "We're here",
+    title: "Contact us",
+    body: `
+      <p>The fastest way to reach us is WhatsApp — message us directly and a real
+      person will reply.</p>
+      <p><a class="button primary" href="https://wa.me/923000000000" target="_blank" rel="noopener">Message us on WhatsApp</a></p>
+      <p>For anything about an existing order, include your order number
+      (found under <button class="link-inline" type="button" data-view-target="orders">My orders</button>) so we can help faster.</p>
+    `,
+  },
+  terms: {
+    eyebrow: "Legal",
+    title: "Terms & Conditions",
+    body: `
+      <p class="static-page-notice">Bechdou is an early-stage marketplace. This page
+      is a placeholder outline, not a lawyer-reviewed legal document — it should be
+      replaced with real terms before Bechdou takes on the public at scale.</p>
+      <p>By using Bechdou, buyers and sellers agree to deal honestly: sellers list
+      items they genuinely own and describe accurately; buyers pay only through the
+      methods Bechdou provides and do not attempt to transact outside the platform.
+      Bechdou may remove listings, suspend accounts, or decline orders that violate
+      this at its discretion.</p>
+    `,
+  },
+  privacy: {
+    eyebrow: "Legal",
+    title: "Privacy Policy",
+    body: `
+      <p class="static-page-notice">Bechdou is an early-stage marketplace. This page
+      is a placeholder outline, not a lawyer-reviewed legal document — it should be
+      replaced with a real privacy policy before Bechdou takes on the public at scale.</p>
+      <p>Bechdou stores the account, listing, and order information needed to run
+      the marketplace: your name, email, phone, delivery address, and order history.
+      We do not sell this information to third parties. Payment is handled manually
+      by Bechdou admins reviewing the transaction reference you provide — Bechdou
+      does not store card numbers, since no card gateway is used.</p>
+    `,
+  },
+};
+
+function renderStaticPage(view) {
+  const page = STATIC_PAGES[view];
+  const panel = document.querySelector(`[data-view-panel="${view}"]`);
+  if (!page || !panel) return;
+  panel.innerHTML = `
+    <div class="page-shell narrow static-page">
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">${esc(page.eyebrow)}</p>
+          <h1>${esc(page.title)}</h1>
+        </div>
+      </header>
+      <div class="static-page-body">${page.body}</div>
+    </div>
+  `;
+}

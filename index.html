@@ -6,7 +6,7 @@
     <title>Bechdou — Pakistan's fashion resale marketplace</title>
     <meta
       name="description"
-      content="Buy and sell preloved fashion across Pakistan. Cash on Delivery, verified seller closets, and buyer protection — Bechdou is Pakistan's community resale marketplace."
+      content="Buy and sell preloved fashion across Pakistan. JazzCash, EasyPaisa, and bank transfer, verified seller closets, and buyer protection — Bechdou is Pakistan's community resale marketplace."
     />
     <meta name="theme-color" content="#6e0f1f" />
     <meta name="format-detection" content="telephone=no" />
@@ -26,7 +26,7 @@
     <meta property="og:title" content="Bechdou — Pakistan's fashion resale marketplace" />
     <meta
       property="og:description"
-      content="Preloved fashion, verified closets, Cash on Delivery across Pakistan."
+      content="Preloved fashion, verified closets, secure wallet payments across Pakistan."
     />
     <meta property="og:image" content="./assets/bechdou-editorial-collage.png" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -37,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=25" />
+    <link rel="stylesheet" href="./styles.css?v=28" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -47,7 +47,7 @@
           <span class="brand-mark">B</span>
           <span>
             <strong>Bechdou</strong>
-            <small>Pakistan resale</small>
+            <small>Fashion resale, Pakistan</small>
           </span>
         </a>
 
@@ -57,6 +57,9 @@
           </button>
           <button class="nav-button" type="button" data-view-target="browse">
             Browse
+          </button>
+          <button class="nav-button" type="button" data-view-target="closets">
+            Closets
           </button>
           <button class="nav-button" type="button" data-view-target="sell" data-requires="seller">
             Sell
@@ -102,22 +105,13 @@
           >
             <!-- HERO -->
             <section class="home-hero" aria-label="Welcome to Bechdou">
-              <div class="home-hero__media" aria-hidden="true">
-                <img
-                  src="./assets/bechdou-editorial-collage.png"
-                  alt=""
-                  fetchpriority="high"
-                  decoding="async"
-                />
-                <span class="home-hero__scrim"></span>
-              </div>
               <div class="home-hero__inner">
                 <p class="hero-eyebrow reveal">Preloved · Pakistan · Premium</p>
                 <h1 class="hero-title reveal">
-                  Pakistan's fashion <em>resale</em> marketplace.
+                  Discover your next <em>favourite</em> piece.
                 </h1>
                 <p class="hero-sub reveal">
-                  Shop verified closets, pay Cash on Delivery, and resell the pieces
+                  Shop verified closets, pay by JazzCash, EasyPaisa, or bank transfer, and resell the pieces
                   you've outgrown — a community built for Lahore, Karachi, Islamabad
                   and beyond.
                 </p>
@@ -141,17 +135,21 @@
                   <div><dt id="hero-stat-cities">—</dt><dd>cities</dd></div>
                 </dl>
               </div>
-              <a class="hero-scroll" href="#trust-strip" aria-label="Scroll to explore">
-                <span aria-hidden="true">Scroll</span>
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-              </a>
+              <div class="home-hero__media reveal" aria-hidden="true">
+                <img
+                  src="./assets/bechdou-editorial-collage.png"
+                  alt=""
+                  fetchpriority="high"
+                  decoding="async"
+                />
+              </div>
             </section>
 
             <!-- TRUST STRIP -->
             <ul class="trust-strip" id="trust-strip" aria-label="Why shop with Bechdou">
               <li class="trust-pill">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>
-                <div><strong>Cash on Delivery</strong><span>Pay when it arrives</span></div>
+                <div><strong>Secure Wallet Pay</strong><span>JazzCash, EasyPaisa, bank transfer</span></div>
               </li>
               <li class="trust-pill">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -211,7 +209,7 @@
                   <p class="eyebrow">Community</p>
                   <h2 id="closets-h">Featured seller closets</h2>
                 </div>
-                <button class="link-button" type="button" data-view-target="browse">
+                <button class="link-button" type="button" data-view-target="closets">
                   Explore all
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                 </button>
@@ -255,12 +253,12 @@
                 </li>
                 <li class="how-step">
                   <span class="how-step__num">3</span>
-                  <h3>Pay on delivery</h3>
-                  <p>We QC every order, dispatch with trusted carriers, and you pay Cash on Delivery.</p>
+                  <h3>Pay Bechdou, then relax</h3>
+                  <p>Send payment via JazzCash, EasyPaisa, or bank transfer — we confirm it, QC the piece, and dispatch.</p>
                 </li>
               </ol>
               <p class="how-note">
-                <strong>Cash on Delivery</strong> available nationwide via TCS &amp; Leopards · Easy cancellations before dispatch
+                <strong>JazzCash · EasyPaisa · Bank transfer</strong> — dispatched nationwide via TCS &amp; Leopards · Easy cancellations before dispatch
               </p>
             </section>
 
@@ -285,7 +283,7 @@
               </div>
               <div class="quote-grid">
                 <figure class="quote-card">
-                  <blockquote>"Sold three kurtas in a weekend and the COD payout was smooth. Bechdou feels made for Pakistan."</blockquote>
+                  <blockquote>"Sold three kurtas in a weekend and the JazzCash payout was smooth. Bechdou feels made for Pakistan."</blockquote>
                   <figcaption><span class="quote-av">A</span><span><strong>Aiza</strong><small>Seller · Lahore</small></span></figcaption>
                 </figure>
                 <figure class="quote-card">
@@ -309,8 +307,8 @@
               </div>
               <div class="faq-list">
                 <details class="faq-item">
-                  <summary>Is Cash on Delivery really available everywhere?<span class="faq-mark" aria-hidden="true"></span></summary>
-                  <p>Yes — COD is our default across major Pakistani cities through TCS and Leopards. You only pay once the parcel reaches you.</p>
+                  <summary>How do I pay?<span class="faq-mark" aria-hidden="true"></span></summary>
+                  <p>Send your payment via JazzCash, EasyPaisa, or bank transfer directly to Bechdou, then share the transaction ID at checkout. We confirm it, QC the piece, and dispatch nationwide through TCS and Leopards.</p>
                 </details>
                 <details class="faq-item">
                   <summary>How do I know a seller is genuine?<span class="faq-mark" aria-hidden="true"></span></summary>
@@ -332,7 +330,7 @@
               <div class="home-cta__inner">
                 <p class="script-label small">Your closet</p>
                 <h2>Start your closet in minutes.</h2>
-                <p class="home-cta__sub">Turn the pieces you've outgrown into cash. List free, reach buyers nationwide, get paid on delivery.</p>
+                <p class="home-cta__sub">Turn the pieces you've outgrown into cash. List free, reach buyers nationwide, get paid straight to your JazzCash or bank account.</p>
                 <div class="hero-actions">
                   <button class="button primary lg" type="button" data-view-target="sell">Start selling</button>
                   <button class="button secondary lg" type="button" data-view-target="browse">Keep shopping</button>
@@ -344,7 +342,7 @@
             <footer class="site-footer">
               <div class="site-footer__brand">
                 <p class="script-label small">Bechdou.pk</p>
-                <p>Pakistan's community marketplace for preloved fashion. Buy, sell, and restyle — Cash on Delivery, nationwide.</p>
+                <p>Pakistan's community marketplace for preloved fashion. Buy, sell, and restyle — pay by JazzCash, EasyPaisa, or bank transfer, nationwide.</p>
                 <div class="footer-social" aria-label="Bechdou social links">
                   <a class="footer-social__link" href="https://wa.me/923000000000" target="_blank" rel="noopener" aria-label="WhatsApp">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.2-.8-2.7-1.1-4.4-3.9-4.5-4-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.2.2-.4.4-.2.7s.7 1.2 1.5 1.9c1 .9 1.8 1.1 2.1 1.3.2.1.4.1.6-.1l.7-.9c.2-.3.4-.2.6-.1l1.9.9c.2.1.4.2.5.3.1.2.1.7-.1 1.2Z"/></svg>
@@ -361,6 +359,7 @@
                 <div>
                   <h3>Shop</h3>
                   <button class="footer-link" type="button" data-view-target="browse">Browse all</button>
+                  <button class="footer-link" type="button" data-view-target="closets">Seller closets</button>
                   <button class="footer-link" type="button" data-category-jump="Tops">Tops</button>
                   <button class="footer-link" type="button" data-category-jump="Outerwear">Outerwear</button>
                   <button class="footer-link" type="button" data-category-jump="Shoes">Shoes</button>
@@ -368,17 +367,26 @@
                 <div>
                   <h3>Sell</h3>
                   <button class="footer-link" type="button" data-view-target="sell">List an item</button>
-                  <button class="footer-link" type="button" data-view-target="sell">Seller studio</button>
-                  <button class="footer-link" type="button" data-view-target="pulse">Your dashboard</button>
+                  <button class="footer-link" type="button" data-view-target="seller-guide">Seller guide</button>
+                  <button class="footer-link" type="button" data-view-target="payments">Payments &amp; payouts</button>
+                </div>
+                <div>
+                  <h3>Support</h3>
+                  <button class="footer-link" type="button" data-jump-home="how-h">How it works</button>
+                  <button class="footer-link" type="button" data-view-target="buyer-protection">Buyer protection</button>
+                  <button class="footer-link" type="button" data-view-target="shipping-delivery">Shipping &amp; delivery</button>
+                  <button class="footer-link" type="button" data-jump-home="faq-h">FAQ</button>
+                  <button class="footer-link" type="button" data-view-target="contact">Contact us</button>
                 </div>
                 <div>
                   <h3>Company</h3>
+                  <button class="footer-link" type="button" data-view-target="about">About Bechdou</button>
                   <a class="footer-link" href="https://wa.me/923000000000" target="_blank" rel="noopener">WhatsApp us</a>
-                  <button class="footer-link" type="button" data-view-target="home">How it works</button>
-                  <span class="footer-link is-muted">Lahore · Karachi · Islamabad</span>
+                  <button class="footer-link" type="button" data-view-target="terms">Terms &amp; conditions</button>
+                  <button class="footer-link" type="button" data-view-target="privacy">Privacy policy</button>
                 </div>
               </nav>
-              <p class="site-footer__legal">© 2026 Bechdou · Pakistan's fashion resale marketplace · Cash on Delivery nationwide</p>
+              <p class="site-footer__legal">© 2026 Bechdou · Pakistan's fashion resale marketplace · JazzCash · EasyPaisa · Bank transfer</p>
             </footer>
           </section>
 
@@ -483,63 +491,8 @@
             </div>
 
             <div class="browse-layout">
-              <div>
-                <div class="results-bar" id="results-bar"></div>
-                <div class="listing-grid" id="listing-grid"></div>
-              </div>
-
-              <aside class="request-panel" aria-label="Request item">
-                <div id="request-empty" class="empty-state">
-                  <p class="script-label small">Request</p>
-                  <h3>Select a piece</h3>
-                  <p>Buyer checkout lands in admin for payment, QC, and delivery.</p>
-                </div>
-
-                <form class="stacked-form is-hidden" id="order-form" hidden>
-                  <div class="request-selected" id="request-selected"></div>
-                  <label>
-                    Buyer name
-                    <input id="order-name" name="buyerName" type="text" required />
-                  </label>
-                  <label>
-                    Contact
-                    <input
-                      id="order-contact"
-                      name="contact"
-                      type="text"
-                      placeholder="Phone, WhatsApp, or email"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Payment method
-                    <select id="order-payment-method" name="paymentMethod"></select>
-                  </label>
-                  <label>
-                    Payment reference
-                    <input
-                      id="order-payment-reference"
-                      name="paymentReference"
-                      type="text"
-                      placeholder="Wallet txn ID or transfer note"
-                    />
-                  </label>
-                  <label>
-                    Delivery city
-                    <input id="order-delivery-city" name="deliveryCity" type="text" placeholder="Lahore" />
-                  </label>
-                  <label>
-                    Note
-                    <textarea
-                      id="order-note"
-                      name="note"
-                      rows="4"
-                      placeholder="Size question, delivery note"
-                    ></textarea>
-                  </label>
-                  <button class="button primary" type="submit">Request checkout</button>
-                </form>
-              </aside>
+              <div class="results-bar" id="results-bar"></div>
+              <div class="listing-grid" id="listing-grid"></div>
             </div>
           </section>
 
@@ -714,6 +667,15 @@
           <section class="view-panel" id="confirmation-view" data-view-panel="confirmation" aria-label="Order confirmation"></section>
           <section class="view-panel" id="orders-view" data-view-panel="orders" aria-label="My orders"></section>
           <section class="view-panel" id="saved-view" data-view-panel="saved" aria-label="Saved pieces"></section>
+          <section class="view-panel" id="closets-view" data-view-panel="closets" aria-label="Seller closets"></section>
+          <section class="view-panel" id="about-view" data-view-panel="about" aria-label="About Bechdou"></section>
+          <section class="view-panel" id="payments-view" data-view-panel="payments" aria-label="Payments and payouts"></section>
+          <section class="view-panel" id="buyer-protection-view" data-view-panel="buyer-protection" aria-label="Buyer protection"></section>
+          <section class="view-panel" id="shipping-delivery-view" data-view-panel="shipping-delivery" aria-label="Shipping and delivery"></section>
+          <section class="view-panel" id="seller-guide-view" data-view-panel="seller-guide" aria-label="Seller guide"></section>
+          <section class="view-panel" id="contact-view" data-view-panel="contact" aria-label="Contact us"></section>
+          <section class="view-panel" id="terms-view" data-view-panel="terms" aria-label="Terms and conditions"></section>
+          <section class="view-panel" id="privacy-view" data-view-panel="privacy" aria-label="Privacy policy"></section>
 
         </section>
       </main>
@@ -770,12 +732,12 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./api.js?v=25"></script>
-    <script src="./pages.js?v=25"></script>
-    <script src="./pages-account.js?v=25"></script>
-    <script src="./admin.js?v=25"></script>
-    <script src="./script.js?v=25"></script>
-    <script src="./seller.js?v=25"></script>
-    <script src="./wire.js?v=25"></script>
+    <script src="./api.js?v=28"></script>
+    <script src="./pages.js?v=28"></script>
+    <script src="./pages-account.js?v=28"></script>
+    <script src="./admin.js?v=28"></script>
+    <script src="./script.js?v=28"></script>
+    <script src="./seller.js?v=28"></script>
+    <script src="./wire.js?v=28"></script>
   </body>
 </html>
