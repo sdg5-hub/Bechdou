@@ -9,6 +9,7 @@ import { verifyPassword, hashPassword, signToken, verifyToken, createLinkToken, 
 import {
   seedIfEmpty, reseed,
   getAccountById, getAccountRowByEmail, getAccountRowById, getAccountByHandle, createAccount,
+  getAccountRowByOAuth, linkOAuthIdentity, promoteToSeller,
   listAccountsFull, publicSellerProfiles,
   updateAccountProfile, setAccountPassword, setEmailVerified, setAccountSuspended,
   issueAuthToken, consumeAuthToken,
@@ -19,7 +20,8 @@ import {
   markOrderShipped, setOrderPayout,
   addEvent, listEvents, marketStatus,
 } from "./db.js";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./email.js";
+import { sendVerificationEmail, sendPasswordResetEmail, appUrl } from "./email.js";
+import { configuredProviders, getProvider, issueState, consumeState } from "./oauth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, "..");
@@ -267,6 +269,71 @@ app.post("/api/auth/login", loginLimiter, asyncRoute((req, res) => {
   res.json({ token: signToken({ sub: row.id, role: row.role }), account: getAccountById(row.id, { full: true }) });
 }));
 
+/* =====================================================================
+   OAUTH  (Google / Facebook)  — plain authorization-code flow, no SDK.
+   Both endpoints are full browser navigations (not fetch calls), so
+   outcomes are communicated by redirecting back into the SPA's hash
+   router rather than returning JSON.
+   ===================================================================== */
+function oauthRedirectUri(provider) {
+  return `${appUrl()}/api/auth/${provider}/callback`;
+}
+
+app.get("/api/auth/:provider", loginLimiter, (req, res) => {
+  const provider = getProvider(req.params.provider);
+  if (!provider) return res.status(404).send("That sign-in method is not configured.");
+  const state = issueState();
+  res.redirect(provider.authorizeUrl(oauthRedirectUri(req.params.provider), state));
+});
+
+app.get("/api/auth/:provider/callback", asyncRoute(async (req, res) => {
+  const providerId = req.params.provider;
+  const provider = getProvider(providerId);
+  const fail = (message) => res.redirect(`${appUrl()}/#oauth-callback?error=${encodeURIComponent(message)}`);
+
+  if (!provider) return fail("That sign-in method is not configured.");
+  if (!consumeState(req.query.state)) return fail("That sign-in link expired. Please try again.");
+  if (req.query.error) return fail("Sign-in was cancelled.");
+  if (!req.query.code) return fail("Sign-in did not complete. Please try again.");
+
+  let profile;
+  try {
+    profile = await provider.exchange(req.query.code, oauthRedirectUri(providerId));
+  } catch (error) {
+    console.error(`[oauth:${providerId}]`, error);
+    return fail("Could not verify that account. Please try again.");
+  }
+
+  let row = getAccountRowByOAuth(providerId, profile.oauthId);
+
+  if (!row) {
+    const existing = getAccountRowByEmail(profile.email);
+    if (existing) {
+      // Same email, different sign-in method — link rather than duplicate.
+      // Safe because the provider has already verified this email address.
+      linkOAuthIdentity(existing.id, providerId, profile.oauthId);
+      row = getAccountRowById(existing.id);
+    } else {
+      const account = createAccount({
+        name: profile.name,
+        email: profile.email,
+        role: "buyer",
+        avatar: profile.avatar,
+        emailVerified: profile.emailVerified,
+        oauthProvider: providerId,
+        oauthId: profile.oauthId,
+      });
+      addEvent("account", `${account.name} created a buyer account via ${provider.label}.`, account.id, account.id);
+      row = getAccountRowById(account.id);
+    }
+  }
+
+  if (row.suspended) return fail("This account is suspended. Contact support@bechdou.pk.");
+
+  const token = signToken({ sub: row.id, role: row.role });
+  res.redirect(`${appUrl()}/#oauth-callback?token=${encodeURIComponent(token)}`);
+}));
+
 // The account is actually created here, the moment the link is confirmed —
 // verifying an email and creating the account are now the same action.
 app.post("/api/auth/verify-email", asyncRoute((req, res) => {
@@ -382,6 +449,17 @@ app.patch("/api/profile", requireAuth, asyncRoute((req, res) => {
   res.json({ account: updateAccountProfile(req.account.id, fields) });
 }));
 
+// Self-service, one-directional: any buyer can start selling for free.
+// Does not touch admin — promoteToSeller only ever moves buyer -> seller.
+app.post("/api/profile/become-seller", requireAuth, asyncRoute((req, res) => {
+  if (req.account.role !== "buyer") {
+    return res.json({ account: getAccountById(req.account.id, { full: true }) });
+  }
+  const account = promoteToSeller(req.account.id);
+  addEvent("account", `${account.name} became a seller.`, account.id, account.id);
+  res.json({ account });
+}));
+
 app.get("/api/sellers/:handle", asyncRoute((req, res) => {
   const row = getAccountByHandle(req.params.handle);
   if (!row) return res.status(404).json({ error: "Closet not found." });
@@ -412,6 +490,7 @@ app.get("/api/bootstrap", asyncRoute((req, res) => {
     events: listEvents(40),
     paymentOptions,
     commissionRate: COMMISSION_RATE,
+    oauthProviders: configuredProviders(),
     marketStatus: marketStatus(),
   });
 }));

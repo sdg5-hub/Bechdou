@@ -63,6 +63,23 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const becomeSellerButton = event.target.closest("[data-become-seller]");
+  if (becomeSellerButton) {
+    becomeSellerButton.disabled = true;
+    becomeSellerButton.textContent = "Setting up your closet…";
+    try {
+      await API.becomeSeller();
+      await refresh();
+      switchView("sell");
+      showToast("You're a seller now — list your first piece.");
+    } catch (error) {
+      becomeSellerButton.disabled = false;
+      becomeSellerButton.textContent = "Become a seller — it's free";
+      showToast(error.message);
+    }
+    return;
+  }
+
   const closetButton = event.target.closest("[data-open-closet]");
   if (closetButton) {
     window.location.hash = `#closet/${encodeURIComponent(closetButton.dataset.openCloset)}`;

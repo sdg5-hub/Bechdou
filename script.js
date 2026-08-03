@@ -5,6 +5,8 @@ const DEMO_PASSWORD = "bechdou123";
 // for orders created before commission was stored per-order.
 const COMMISSION_RATE = 0.20;
 
+let oauthProviders = [];
+
 let paymentOptions = [
   {
     id: "stripe-checkout",
@@ -339,6 +341,9 @@ function applyBootstrap(data) {
   };
   if (Array.isArray(data.paymentOptions) && data.paymentOptions.length) {
     paymentOptions = data.paymentOptions;
+  }
+  if (Array.isArray(data.oauthProviders)) {
+    oauthProviders = data.oauthProviders;
   }
 }
 
@@ -883,7 +888,10 @@ function showToast(message) {
 
 // Views that require a session, and the role each one needs.
 const VIEW_GUARDS = {
-  sell: (account) => canSell(account),
+  // Any logged-in user can open Sell — a buyer sees a one-click "become a
+  // seller" prompt there instead of being turned away before they even see
+  // what selling looks like.
+  sell: (account) => !!account,
   admin: (account) => canAdmin(account),
   orders: (account) => !!account,
   profile: (account) => !!account,
@@ -1344,11 +1352,13 @@ function renderSellerMetrics() {
   const allowed = canSell(account);
 
   if (!allowed) {
-    dom.sellerMetrics.innerHTML = `
-      ${metricCard("Seller access", "Locked", "Use a seller or admin account")}
-      ${metricCard("Demo sellers", "2", "Aiza Closet and Noor Vintage")}
-      ${metricCard("Password", DEMO_PASSWORD, "Seeded account login")}
-    `;
+    dom.sellerMetrics.innerHTML = account
+      ? `${metricCard("Seller access", "Not yet", "One click away — it's free")}`
+      : `
+        ${metricCard("Seller access", "Locked", "Use a seller or admin account")}
+        ${metricCard("Demo sellers", "2", "Aiza Closet and Noor Vintage")}
+        ${metricCard("Password", DEMO_PASSWORD, "Seeded account login")}
+      `;
     return;
   }
 
@@ -1403,7 +1413,9 @@ function renderSellerQueue() {
   setFormEnabled(dom.listingForm, sellerAllowed);
   dom.sellerRoleNote.innerHTML = sellerAllowed
     ? `<span class="status approved">Seller ready</span>`
-    : `<span class="status pending">Seller login required</span>`;
+    : account
+      ? `<button class="button primary sm" type="button" data-become-seller>Become a seller — it's free</button>`
+      : `<span class="status pending">Seller login required</span>`;
 
   renderSellerMetrics();
   renderListingAssistant();
@@ -1847,10 +1859,38 @@ function handleRoute() {
     return;
   }
 
+  // The OAuth callback never has its own page — it just carries a token (or
+  // an error) once, then hands off straight into the normal app.
+  if (route === "oauth-callback") {
+    handleOAuthCallback();
+    return;
+  }
+
   if (AUTH_ROUTES.has(route)) {
     switchView(route);
     return;
   }
+}
+
+async function handleOAuthCallback() {
+  const token = hashParam("token");
+  const error = hashParam("error");
+  window.history.replaceState(null, "", window.location.pathname);
+
+  if (error) {
+    showToast(error);
+    switchView("login");
+    return;
+  }
+  if (!token) {
+    switchView("login");
+    return;
+  }
+
+  API.setToken(token);
+  await refresh();
+  switchView("home");
+  showToast(`Welcome, ${activeAccount()?.name || "there"}.`);
 }
 
 // Routes that render a full page rather than a storefront panel.
