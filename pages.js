@@ -22,6 +22,24 @@ function hashParam(name) {
   return new URLSearchParams(query).get(name) || "";
 }
 
+const OAUTH_LABELS = { google: "Google", facebook: "Facebook" };
+
+// Shown on both login and signup — hidden entirely if the server has no
+// provider credentials configured, rather than rendering a dead button.
+function oauthButtonsHtml() {
+  if (!oauthProviders.length) return "";
+  return `
+    <div class="oauth-buttons">
+      ${oauthProviders.map((id) => `
+        <a class="button oauth-button oauth-button--${esc(id)}" href="/api/auth/${esc(id)}">
+          Continue with ${esc(OAUTH_LABELS[id] || id)}
+        </a>
+      `).join("")}
+    </div>
+    <div class="auth-divider"><span>or</span></div>
+  `;
+}
+
 function submitState(form, busy, busyLabel) {
   const button = form.querySelector('button[type="submit"]');
   if (!button) return;
@@ -46,6 +64,7 @@ function renderLoginPage(message = "") {
           <h1>Welcome back</h1>
           <p>Log in to your closet, orders, and saved pieces.</p>
         </div>
+        ${oauthButtonsHtml()}
         <form class="auth-form" id="page-login-form" novalidate>
           <div id="login-alert">${pageAlert(message)}</div>
           <label>Email
@@ -96,6 +115,7 @@ function renderSignupPage(message = "") {
           <h1>Create your account</h1>
           <p>Buy preloved pieces, or open a closet and sell your own.</p>
         </div>
+        ${oauthButtonsHtml()}
         <form class="auth-form" id="page-signup-form" novalidate>
           <div id="signup-alert">${pageAlert(message)}</div>
           <label>Full name

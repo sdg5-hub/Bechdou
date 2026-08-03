@@ -24,6 +24,8 @@ order operations, and a real REST API behind it.
 
 **Marketplace engine**
 - **Auth & roles** — buyer / seller / admin, scrypt-hashed passwords, JWT sessions
+- **Google / Facebook sign-in**, optional — hidden until credentials are configured
+- Any buyer can **become a seller** in one click, free
 - **Sellers** submit listings (with photo upload) for review
 - **Admins** approve / reject listings and run the order desk
 - **Orders** — pay Bechdou directly via JazzCash, EasyPaisa, or bank transfer, then QC → dispatch → delivered
@@ -119,6 +121,9 @@ All responses are JSON. Authenticated requests send `Authorization: Bearer <toke
 | POST   | `/api/auth/signup`              | —         | Create account → `{ token, account }`|
 | POST   | `/api/auth/login`               | —         | Log in → `{ token, account }`        |
 | GET    | `/api/auth/me`                  | optional  | Current account                      |
+| GET    | `/api/auth/:provider`           | —         | Start Google/Facebook sign-in (browser redirect) |
+| GET    | `/api/auth/:provider/callback`  | —         | Provider redirects here; hands off to `#oauth-callback` |
+| POST   | `/api/profile/become-seller`    | any user  | One-click buyer → seller upgrade     |
 | GET    | `/api/listings`                 | —         | Approved listings (filter/search)    |
 | GET    | `/api/listings/:id`             | —         | One listing (counts a view)          |
 | POST   | `/api/listings`                 | seller    | Create listing (base64 image upload) |
@@ -162,6 +167,8 @@ Environment variables (all optional):
 | `JAZZCASH_ACCOUNT_TITLE` / `JAZZCASH_ACCOUNT_NUMBER` | placeholder | Shown to buyers at checkout — **set to your real JazzCash details before launch** |
 | `EASYPAISA_ACCOUNT_TITLE` / `EASYPAISA_ACCOUNT_NUMBER` | placeholder | Shown to buyers at checkout — **set to your real EasyPaisa details before launch** |
 | `BANK_ACCOUNT_TITLE` / `BANK_ACCOUNT_NUMBER` / `BANK_NAME` | placeholder | Shown to buyers at checkout — **set to your real bank details before launch** |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Enables "Continue with Google" — hidden if unset |
+| `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | — | Enables "Continue with Facebook" — hidden if unset |
 
 To wipe and re-seed, stop the server, delete `server/bechdou.db*`, and restart —
 or just hit **Reset** in the UI as admin.
@@ -189,6 +196,46 @@ BECHDOU_APP_URL=https://yourdomain.pk
 **Without `RESEND_API_KEY` the app still works** — verification and reset links
 are printed to the server console instead of being emailed, so you can develop
 and test the full flow locally before wiring up a provider.
+
+### Google / Facebook sign-in setup
+
+Both use plain OAuth 2.0 — no SDK, no new dependency. **Without credentials,
+the "Continue with Google/Facebook" buttons simply don't render** — nothing
+else is affected, so this is entirely optional.
+
+**Google:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create an OAuth client ID (type: Web application).
+2. Under **Authorized redirect URIs**, add exactly:
+   `http://localhost:4000/api/auth/google/callback` for local dev, and your
+   real domain's equivalent for production (e.g. `https://bechdou.pk/api/auth/google/callback`).
+3. Copy the Client ID and Client Secret into `.env`:
+
+```bash
+GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=xxxxxxxx
+```
+
+**Facebook:**
+1. Go to [Meta for Developers](https://developers.facebook.com/apps) → create an app → add the **Facebook Login** product.
+2. Under Facebook Login → Settings, add the same callback URL pattern:
+   `http://localhost:4000/api/auth/facebook/callback` (and your production domain's equivalent).
+3. Copy the App ID and App Secret into `.env`:
+
+```bash
+FACEBOOK_APP_ID=xxxxxxxx
+FACEBOOK_APP_SECRET=xxxxxxxx
+```
+
+**Note:** Facebook restricts new apps to a small list of test users until Meta
+reviews the app for public use — expect to submit for review before real
+strangers can use "Continue with Facebook."
+
+In both cases the redirect URI you register must match `BECHDOU_APP_URL`
+exactly (scheme, host, and path) or the provider will reject the request.
+
+A brand-new sign-in creates a **buyer** account with the email marked
+verified (the provider already confirmed it). If an account with that email
+already exists, the two are linked instead of creating a duplicate.
 
 ---
 

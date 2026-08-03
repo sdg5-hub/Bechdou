@@ -60,6 +60,7 @@ const API = (() => {
     resetPassword: (token, password) => request("POST", "/auth/reset-password", { token, password }),
 
     updateProfile: (payload) => request("PATCH", "/profile", payload),
+    becomeSeller: () => request("POST", "/profile/become-seller"),
     seller: (handle) => request("GET", `/sellers/${encodeURIComponent(handle)}`),
 
     listing: (id) => request("GET", `/listings/${id}`),

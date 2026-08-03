@@ -3428,6 +3428,50 @@ button.footer-link {
   line-height: 1.55;
 }
 
+.oauth-buttons {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.oauth-button {
+  width: 100%;
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--line-strong);
+  font-weight: 700;
+}
+
+.oauth-button:hover {
+  border-color: var(--merlot);
+  background: var(--cream);
+}
+
+.auth-divider {
+  position: relative;
+  margin: 18px 0;
+  text-align: center;
+}
+
+.auth-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line);
+}
+
+.auth-divider span {
+  position: relative;
+  padding: 0 12px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
 .auth-form {
   display: grid;
   gap: 15px;

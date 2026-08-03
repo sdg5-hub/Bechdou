@@ -130,6 +130,8 @@ addColumn("accounts", "bio", "TEXT");
 addColumn("accounts", "avatar", "TEXT");
 addColumn("accounts", "email_verified", "INTEGER DEFAULT 0");
 addColumn("accounts", "suspended", "INTEGER DEFAULT 0");
+addColumn("accounts", "oauth_provider", "TEXT");
+addColumn("accounts", "oauth_id", "TEXT");
 addColumn("listings", "images", "TEXT");
 addColumn("listings", "sold", "INTEGER DEFAULT 0");
 addColumn("orders", "seller_id", "TEXT");
@@ -211,6 +213,7 @@ function rowToAccount(row, { full = false, savedIds = [] } = {}) {
     account.phone = row.phone;
     account.emailVerified = !!row.email_verified;
     account.suspended = !!row.suspended;
+    account.oauthProvider = row.oauth_provider || null;
   }
   return account;
 }
@@ -275,32 +278,58 @@ export function getAccountRowByEmail(email) {
   return db.prepare("SELECT * FROM accounts WHERE email = ?").get(String(email || "").trim().toLowerCase());
 }
 
+export function getAccountRowByOAuth(provider, oauthId) {
+  return db
+    .prepare("SELECT * FROM accounts WHERE oauth_provider = ? AND oauth_id = ?")
+    .get(provider, oauthId);
+}
+
+// Attaches a provider identity to an account that already exists by email —
+// the provider has already verified that email, so this is safe to do
+// without an extra confirmation step.
+export function linkOAuthIdentity(accountId, provider, oauthId) {
+  db.prepare("UPDATE accounts SET oauth_provider = ?, oauth_id = ? WHERE id = ?").run(provider, oauthId, accountId);
+}
+
 export function getAccountById(id, { full = false } = {}) {
   const row = getAccountRowById(id);
   if (!row) return null;
   return rowToAccount(row, { full, savedIds: savedIdsByAccount(id) });
 }
 
-export function createAccount({ name, email, password, passwordHash, role, phone, city, handle, trustScore }) {
+export function createAccount({
+  name, email, password, passwordHash, role, phone, city, handle, trustScore,
+  avatar, emailVerified, oauthProvider, oauthId,
+}) {
   const account = {
     id: makeId("acct"),
     name: String(name || "").trim(),
     email: String(email || "").trim().toLowerCase(),
     // A verified pending signup already carries a hash — don't re-hash it.
-    password_hash: passwordHash || hashPassword(password),
+    // An OAuth signup has no password at all, so this hash is unusable —
+    // random bytes the account owner never sees. They can only sign in
+    // through the provider until they set a real password via "forgot
+    // password", which works regardless of how the account was created.
+    password_hash: passwordHash || hashPassword(password ?? crypto.randomBytes(32).toString("hex")),
     role: ["buyer", "seller", "admin"].includes(role) ? role : "buyer",
     phone: String(phone || "").trim(),
     city: String(city || "").trim() || "Pakistan",
     handle: handle || "@" + String(name || email || "user").trim().toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 18),
     trust_score: trustScore ?? 78,
+    avatar: avatar || null,
+    email_verified: emailVerified ? 1 : 0,
+    oauth_provider: oauthProvider || null,
+    oauth_id: oauthId || null,
     created_at: new Date().toISOString(),
   };
   db.prepare(
-    `INSERT INTO accounts (id,name,email,password_hash,role,phone,city,handle,trust_score,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO accounts (id,name,email,password_hash,role,phone,city,handle,trust_score,avatar,
+      email_verified,oauth_provider,oauth_id,created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     account.id, account.name, account.email, account.password_hash, account.role,
-    account.phone, account.city, account.handle, account.trust_score, account.created_at,
+    account.phone, account.city, account.handle, account.trust_score, account.avatar,
+    account.email_verified, account.oauth_provider, account.oauth_id, account.created_at,
   );
   return getAccountById(account.id, { full: true });
 }
@@ -321,6 +350,13 @@ export function updateAccountProfile(id, fields) {
 
 export function setAccountPassword(id, passwordHash) {
   db.prepare("UPDATE accounts SET password_hash = ? WHERE id = ?").run(passwordHash, id);
+}
+
+// One-directional, self-service: buyer -> seller only. Admin role is never
+// reachable through this path.
+export function promoteToSeller(id) {
+  db.prepare("UPDATE accounts SET role = 'seller' WHERE id = ? AND role = 'buyer'").run(id);
+  return getAccountById(id, { full: true });
 }
 
 export function setEmailVerified(id) {
