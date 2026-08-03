@@ -101,6 +101,22 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_auth_tokens_hash ON auth_tokens (token_hash);
+
+  -- Holds signup data until the email is verified. No row in "accounts" is
+  -- created until then, so an abandoned signup never blocks a retry.
+  CREATE TABLE IF NOT EXISTS pending_signups (
+    email TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'buyer',
+    phone TEXT,
+    city TEXT,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_pending_signups_token ON pending_signups (token_hash);
 `);
 
 /* ---------- Migrations (additive columns for pre-existing databases) ---------- */
@@ -259,12 +275,13 @@ export function getAccountById(id, { full = false } = {}) {
   return rowToAccount(row, { full, savedIds: savedIdsByAccount(id) });
 }
 
-export function createAccount({ name, email, password, role, phone, city, handle, trustScore }) {
+export function createAccount({ name, email, password, passwordHash, role, phone, city, handle, trustScore }) {
   const account = {
     id: makeId("acct"),
     name: String(name || "").trim(),
     email: String(email || "").trim().toLowerCase(),
-    password_hash: hashPassword(password),
+    // A verified pending signup already carries a hash — don't re-hash it.
+    password_hash: passwordHash || hashPassword(password),
     role: ["buyer", "seller", "admin"].includes(role) ? role : "buyer",
     phone: String(phone || "").trim(),
     city: String(city || "").trim() || "Pakistan",
@@ -337,6 +354,44 @@ export function consumeAuthToken(tokenHash, purpose) {
   if (new Date(row.expires_at).getTime() < Date.now()) return null;
   db.prepare("UPDATE auth_tokens SET used_at = ? WHERE id = ?").run(new Date().toISOString(), row.id);
   return row.account_id;
+}
+
+/* ---------- Pending signups (unverified, no account yet) ---------- */
+export function createPendingSignup({ name, email, passwordHash, role, phone, city }, tokenHash, ttlMs) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const now = new Date().toISOString();
+  // Lazy cleanup — no separate scheduler needed for a table this small.
+  db.prepare("DELETE FROM pending_signups WHERE expires_at < ?").run(now);
+  db.prepare(
+    `INSERT INTO pending_signups (email,name,password_hash,role,phone,city,token_hash,expires_at,created_at)
+     VALUES (?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(email) DO UPDATE SET
+       name=excluded.name, password_hash=excluded.password_hash, role=excluded.role,
+       phone=excluded.phone, city=excluded.city, token_hash=excluded.token_hash,
+       expires_at=excluded.expires_at, created_at=excluded.created_at`,
+  ).run(
+    normalizedEmail, String(name || "").trim(), passwordHash,
+    ["buyer", "seller", "admin"].includes(role) ? role : "buyer",
+    String(phone || "").trim(), String(city || "").trim() || "Pakistan",
+    tokenHash, new Date(Date.now() + ttlMs).toISOString(), now,
+  );
+}
+
+export function getPendingSignupByEmail(email) {
+  const row = db
+    .prepare("SELECT * FROM pending_signups WHERE email = ?")
+    .get(String(email || "").trim().toLowerCase());
+  if (!row || new Date(row.expires_at).getTime() < Date.now()) return null;
+  return row;
+}
+
+// Consumes (deletes) the pending signup so a token can only create one account.
+export function consumePendingSignupByToken(tokenHash) {
+  const row = db.prepare("SELECT * FROM pending_signups WHERE token_hash = ?").get(tokenHash);
+  if (!row) return null;
+  db.prepare("DELETE FROM pending_signups WHERE email = ?").run(row.email);
+  if (new Date(row.expires_at).getTime() < Date.now()) return null;
+  return row;
 }
 
 export function listAccountsFull() {

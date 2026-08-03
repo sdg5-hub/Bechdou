@@ -138,10 +138,10 @@ function renderSignupPage(message = "") {
     const data = Object.fromEntries(new FormData(form));
     submitState(form, true, "Creating account…");
     try {
+      // No account exists yet — it is created the moment the emailed link is
+      // clicked, so there is nothing to log into here.
       const result = await API.signup(data);
-      API.setToken(result.token);
-      await refresh();
-      renderVerifyNoticePage(result.account.email, result.emailSent);
+      renderVerifyNoticePage(result.email, result.emailSent);
       switchView("verify-email");
     } catch (error) {
       form.querySelector("#signup-alert").innerHTML = pageAlert(error.message);
@@ -275,8 +275,8 @@ function renderVerifyNoticePage(email, emailSent) {
         <div class="status-icon is-good">✉</div>
         <h1>Check your inbox</h1>
         <p>
-          We sent a verification link to <strong>${esc(email)}</strong>.
-          Click it to confirm your account.
+          We sent a link to <strong>${esc(email)}</strong>. Click it to finish
+          creating your account — nothing is created until you do.
           ${emailSent === false ? "<br /><em>Email delivery is not configured on this server yet — the link was written to the server log.</em>" : ""}
         </p>
         <div class="status-actions">
@@ -292,7 +292,8 @@ function renderVerifyNoticePage(email, emailSent) {
     button.disabled = true;
     button.textContent = "Sending…";
     try {
-      const result = await API.resendVerification();
+      // Not logged in yet (no account exists) — resend by email instead.
+      const result = await API.resendVerification(email);
       showToast(result.alreadyVerified ? "Your email is already verified." : "Verification email resent.");
     } catch (error) {
       showToast(error.message);
@@ -311,14 +312,16 @@ async function renderVerifyResultPage() {
   `;
 
   try {
-    await API.verifyEmail(token);
+    // For a fresh signup this is the moment the account is actually created.
+    const result = await API.verifyEmail(token);
+    if (result.token) API.setToken(result.token);
     await refresh();
     dom.verifyView.innerHTML = `
       <div class="status-shell">
         <div class="status-panel">
           <div class="status-icon is-good">✓</div>
           <h1>Email verified</h1>
-          <p>Your account is confirmed. Welcome to Bechdou.</p>
+          <p>Your account is ready. Welcome to Bechdou, ${esc(result.account?.name || "")}.</p>
           <div class="status-actions">
             <button class="button primary" type="button" data-view-target="home">Start browsing</button>
           </div>
@@ -343,8 +346,11 @@ async function renderVerifyResultPage() {
     if (retry) {
       retry.addEventListener("click", async () => {
         if (!activeAccount()) {
-          switchView("login");
-          showToast("Log in first, then resend the verification email.");
+          // No account exists for an expired signup link — signing up again
+          // with the same email replaces the pending request and sends a
+          // fresh one.
+          switchView("signup");
+          showToast("That link expired. Sign up again to get a new one.");
           return;
         }
         try {
