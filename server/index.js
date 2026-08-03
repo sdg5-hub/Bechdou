@@ -15,7 +15,7 @@ import {
   createPendingSignup, getPendingSignupByEmail, consumePendingSignupByToken,
   listingsForViewer, approvedListings, getListingById, createListing, setListingStatus, incrementViews, toggleSave,
   updateListing, deleteListing, setListingSold,
-  createOrder, getOrderById, ordersForViewer, ordersForListing, updateOrder, updateOrderByReference,
+  createOrder, getOrderById, ordersForViewer, ordersForListing, updateOrder, updateOrderByReference, COMMISSION_RATE,
   markOrderShipped, setOrderPayout,
   addEvent, listEvents, marketStatus,
 } from "./db.js";
@@ -26,11 +26,38 @@ const ROOT_DIR = path.join(__dirname, "..");
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 const PORT = process.env.PORT || 4000;
 
-const COMMISSION_RATE = 0.15;
 const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
+
+// Manual wallet/bank transfer only — no payment gateway, no cards. The buyer
+// sends the full amount to Bechdou's own account, then enters the
+// transaction reference below; the seller is paid out separately by the
+// admin once the order is confirmed. Real account details belong in
+// server/.env — the values here are visible placeholders, not real numbers.
 const paymentOptions = [
-  { id: "cash-on-delivery", label: "Cash on Delivery", status: "Available", note: "Pay the courier in cash when your order arrives — no card needed.", disabled: false },
+  {
+    id: "jazzcash",
+    label: "JazzCash",
+    accountTitle: process.env.JAZZCASH_ACCOUNT_TITLE || "Bechdou Marketplace",
+    accountNumber: process.env.JAZZCASH_ACCOUNT_NUMBER || "0300-0000000",
+    note: "Send the full amount to this JazzCash number, then enter the transaction ID below.",
+  },
+  {
+    id: "easypaisa",
+    label: "EasyPaisa",
+    accountTitle: process.env.EASYPAISA_ACCOUNT_TITLE || "Bechdou Marketplace",
+    accountNumber: process.env.EASYPAISA_ACCOUNT_NUMBER || "0300-0000000",
+    note: "Send the full amount to this EasyPaisa number, then enter the transaction ID below.",
+  },
+  {
+    id: "bank-transfer",
+    label: "Bank transfer",
+    accountTitle: process.env.BANK_ACCOUNT_TITLE || "Bechdou Marketplace",
+    accountNumber: process.env.BANK_ACCOUNT_NUMBER || "PK00 BANK 0000 0000 0000 0000",
+    bankName: process.env.BANK_NAME || "Bank name",
+    note: "Transfer the full amount to this account, then enter the reference number below.",
+  },
 ];
+const PAYMENT_METHOD_IDS = new Set(paymentOptions.map((option) => option.id));
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 seedIfEmpty();
@@ -615,6 +642,12 @@ app.post("/api/orders", requireAuth, asyncRoute((req, res) => {
   if (listing.sellerId === req.account.id) return res.status(400).json({ error: "You cannot buy your own listing." });
   if (!String(data.contact || "").trim()) return res.status(400).json({ error: "A contact number is required for delivery." });
   if (!String(data.deliveryAddress || "").trim()) return res.status(400).json({ error: "A delivery address is required." });
+  if (!PAYMENT_METHOD_IDS.has(data.paymentMethod)) {
+    return res.status(400).json({ error: "Choose JazzCash, EasyPaisa, or a bank transfer." });
+  }
+  if (!String(data.paymentReference || "").trim()) {
+    return res.status(400).json({ error: "Enter the transaction ID or reference for your payment." });
+  }
 
   const order = createOrder({
     listingId: listing.id,
@@ -626,8 +659,11 @@ app.post("/api/orders", requireAuth, asyncRoute((req, res) => {
     deliveryAddress: data.deliveryAddress,
     note: data.note,
     amount: listing.price,
-    paymentMethod: "cash-on-delivery",
-    paymentStatus: "Due on delivery",
+    paymentMethod: data.paymentMethod,
+    paymentReference: data.paymentReference,
+    // The buyer has already sent the money by the time they submit this
+    // form — admin confirms it landed, there is no gateway to auto-verify.
+    paymentStatus: "Awaiting confirmation",
     status: "Requested",
   });
 

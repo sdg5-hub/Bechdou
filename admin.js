@@ -44,10 +44,11 @@ function renderAdmin() {
 
       <div class="admin-metrics">
         ${adminMetricCard("Pending review", metrics.pending, "listings awaiting approval")}
-        ${adminMetricCard("Live listings", metrics.approved, "approved and browsable")}
+        ${adminMetricCard("Awaiting payment check", metrics.awaitingConfirmation, "buyer says they paid, unconfirmed")}
         ${adminMetricCard("Open orders", metrics.openOrders, "not yet delivered")}
         ${adminMetricCard("GMV", money(metrics.gmv), "gross merchandise value")}
-        ${adminMetricCard("Owed to sellers", money(metrics.owed), "payouts outstanding")}
+        ${adminMetricCard("Bechdou's cut", money(metrics.commissionEarned), `${Math.round(COMMISSION_RATE * 100)}% commission earned`)}
+        ${adminMetricCard("Owed to sellers", money(metrics.owed), "still to send out")}
         ${adminMetricCard("Users", metrics.users, `${metrics.suspended} suspended`)}
       </div>
 
@@ -81,14 +82,17 @@ function adminMetrics() {
   const listings = state.listings;
   const orders = state.orders;
   const delivered = orders.filter((o) => o.status === "Delivered");
-  const owed = orders.filter((o) => o.payoutStatus !== "paid" && o.status !== "Cancelled");
+  const confirmed = orders.filter((o) => o.status !== "Cancelled" && o.paymentStatus !== "Awaiting confirmation");
+  const owed = confirmed.filter((o) => o.payoutStatus !== "paid");
 
   return {
     pending: listings.filter((l) => l.status === "pending").length,
     approved: listings.filter((l) => l.status === "approved").length,
     openOrders: orders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length,
+    awaitingConfirmation: orders.filter((o) => o.paymentStatus === "Awaiting confirmation").length,
     gmv: delivered.reduce((sum, o) => sum + Number(o.amount || 0), 0),
-    owed: owed.reduce((sum, o) => sum + payoutFor(o.amount), 0),
+    commissionEarned: confirmed.reduce((sum, o) => sum + commissionForOrder(o), 0),
+    owed: owed.reduce((sum, o) => sum + payoutForOrder(o), 0),
     users: state.accounts.length,
     suspended: state.accounts.filter((a) => a.suspended).length,
   };
@@ -149,7 +153,7 @@ function adminListingsTable() {
 
 /* ---------- Orders desk ---------- */
 const ADMIN_ORDER_ACTIONS = [
-  { action: "paid", label: "Mark paid" },
+  { action: "paid", label: "Confirm payment received" },
   { action: "qc", label: "QC pass" },
   { action: "dispatch", label: "Dispatch" },
   { action: "delivered", label: "Delivered" },
@@ -165,6 +169,7 @@ function adminOrdersTable() {
       <div class="admin-list">
         ${state.orders.map((order) => {
           const listing = listingById(order.listingId);
+          const methodLabel = paymentOptionById(order.paymentMethod)?.label || order.paymentMethod;
           return `
             <article class="admin-row">
               <img src="${esc(safeImage(listing?.image))}" alt="${esc(listing?.title || "Item")}" />
@@ -173,6 +178,9 @@ function adminOrdersTable() {
                 <span>${esc(order.buyerName || "")} &middot; ${esc(order.contact || "")}</span>
                 <span class="admin-row__meta">
                   ${esc(order.id)} &middot; ${esc(order.deliveryAddress || "")} ${esc(order.deliveryCity || "")}
+                </span>
+                <span class="admin-row__meta admin-row__payment">
+                  Paid via <strong>${esc(methodLabel)}</strong> &middot; ref <strong>${esc(order.paymentReference || "—")}</strong>
                 </span>
               </div>
               <div class="admin-row__side">
@@ -236,35 +244,53 @@ function adminUsersTable() {
 
 /* ---------- Payouts ---------- */
 function adminPayoutsTable() {
-  const payable = state.orders.filter((o) => o.status !== "Cancelled");
-  if (!payable.length) return adminEmpty("No payable orders yet.");
+  const awaitingCheck = state.orders.filter((o) => o.paymentStatus === "Awaiting confirmation");
+  const payable = state.orders.filter(
+    (o) => o.status !== "Cancelled" && o.paymentStatus !== "Awaiting confirmation",
+  );
+  if (!payable.length && !awaitingCheck.length) return adminEmpty("No orders yet.");
 
   return `
     <section class="admin-section">
       <h2>Seller payouts <span class="count-pill">${payable.length}</span></h2>
-      <p class="auth-hint">Bechdou keeps ${Math.round(COMMISSION_RATE * 100)}% commission; the rest is owed to the seller.</p>
+      <p class="auth-hint">
+        Bechdou keeps ${Math.round(COMMISSION_RATE * 100)}% of every confirmed sale; the rest goes to the seller.
+      </p>
+
+      ${awaitingCheck.length ? `
+        <p class="admin-note is-warning">
+          ${awaitingCheck.length} order${awaitingCheck.length === 1 ? "" : "s"} still need${awaitingCheck.length === 1 ? "s" : ""}
+          the buyer's payment confirmed on the <strong>Orders</strong> tab before a payout can be worked out.
+        </p>
+      ` : ""}
+
       <div class="admin-list">
         ${payable.map((order) => {
           const listing = listingById(order.listingId);
           const seller = accountById(order.sellerId);
           const paid = order.payoutStatus === "paid";
+          const commission = commissionForOrder(order);
+          const payout = payoutForOrder(order);
           return `
-            <article class="admin-row is-compact">
+            <article class="admin-row is-compact payout-row">
               <span class="admin-avatar">${esc(initials(seller?.name || listing?.sellerName || "S"))}</span>
               <div class="admin-row__main">
                 <strong>${esc(seller?.name || listing?.sellerName || "Seller")}</strong>
                 <span>${esc(listing?.title || "Removed listing")}</span>
                 <span class="admin-row__meta">${esc(order.id)} &middot; ${esc(order.status)}</span>
               </div>
+              <div class="payout-breakdown">
+                <div><span>Buyer paid</span><strong>${esc(money(order.amount))}</strong></div>
+                <div><span>Bechdou keeps</span><strong>${esc(money(commission))}</strong></div>
+                <div class="is-emphasis"><span>Send to seller</span><strong>${esc(money(payout))}</strong></div>
+              </div>
               <div class="admin-row__side">
-                <strong>${esc(money(payoutFor(order.amount)))}</strong>
-                <span class="admin-row__meta">of ${esc(money(order.amount))}</span>
-                <span class="status ${paid ? "approved" : "pending"}">${paid ? "Paid out" : "Unpaid"}</span>
+                <span class="status ${paid ? "approved" : "pending"}">${paid ? "Sent to seller" : "Not sent yet"}</span>
               </div>
               <div class="admin-row__actions">
                 <button class="button ${paid ? "secondary" : "primary"} sm" type="button"
                   data-admin-payout="${esc(order.id)}" data-payout-next="${paid ? "unpaid" : "paid"}">
-                  ${paid ? "Mark unpaid" : "Mark paid out"}
+                  ${paid ? "Mark not sent" : `Mark ${esc(money(payout))} sent`}
                 </button>
               </div>
             </article>

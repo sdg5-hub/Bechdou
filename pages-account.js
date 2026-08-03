@@ -163,7 +163,7 @@ function renderSavedPage() {
 }
 
 /* =====================================================================
-   CHECKOUT  (Cash on Delivery)
+   CHECKOUT  (JazzCash / EasyPaisa / bank transfer)
    ===================================================================== */
 const BUYER_INFO_KEY = "bechdou-buyer-info";
 
@@ -249,17 +249,33 @@ function renderCheckoutPage(listingId) {
           </fieldset>
 
           <fieldset class="checkout-fieldset">
-            <legend>Payment</legend>
-            <div class="payment-choice is-selected">
-              <div>
-                <strong>Cash on Delivery</strong>
-                <span>Pay the courier in cash when your order arrives.</span>
-              </div>
-              <span class="status approved">Selected</span>
+            <legend>Pay Bechdou directly</legend>
+            <p class="auth-hint">
+              Send <strong>${esc(money(listing.price))}</strong> using one of the accounts below,
+              then enter the transaction ID so we can confirm it and dispatch your order.
+            </p>
+            <div class="payment-method-list" role="radiogroup" aria-label="Payment method">
+              ${paymentOptions.map((option, i) => `
+                <label class="payment-choice${i === 0 ? " is-selected" : ""}">
+                  <input type="radio" name="paymentMethod" value="${esc(option.id)}" ${i === 0 ? "checked" : ""} required />
+                  <div>
+                    <strong>${esc(option.label)}</strong>
+                    <span>${esc(option.note || "")}</span>
+                    <div class="payment-account-details">
+                      <span>${esc(option.accountTitle || "")}</span>
+                      <strong>${esc(option.accountNumber || "")}</strong>
+                      ${option.bankName ? `<span>${esc(option.bankName)}</span>` : ""}
+                    </div>
+                  </div>
+                </label>
+              `).join("")}
             </div>
+            <label>Transaction ID / reference
+              <input type="text" name="paymentReference" placeholder="e.g. TXN-849213" required />
+            </label>
           </fieldset>
 
-          <button class="button primary lg" type="submit">Place order</button>
+          <button class="button primary lg" type="submit">Submit order</button>
         </form>
 
         <aside class="checkout-summary">
@@ -280,21 +296,27 @@ function renderCheckoutPage(listingId) {
             <span>Item price</span>
             <strong>${esc(money(listing.price))}</strong>
           </div>
-          <div class="summary-row">
-            <span>Delivery</span>
-            <strong>Paid on delivery</strong>
-          </div>
           <div class="summary-row is-total">
-            <span>Total due</span>
+            <span>Total to send</span>
             <strong>${esc(money(listing.price))}</strong>
           </div>
-          <p class="auth-hint">You can inspect the piece at your door before paying.</p>
+          <p class="auth-hint">We confirm your payment, then QC and dispatch the piece.</p>
         </aside>
       </div>
     </div>
   `;
 
-  dom.checkoutView.querySelector("#checkout-form").addEventListener("submit", async (event) => {
+  const checkoutForm = dom.checkoutView.querySelector("#checkout-form");
+
+  checkoutForm.querySelectorAll('input[name="paymentMethod"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      checkoutForm.querySelectorAll(".payment-choice").forEach((label) => {
+        label.classList.toggle("is-selected", label.querySelector('input[name="paymentMethod"]').checked);
+      });
+    });
+  });
+
+  checkoutForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form));
@@ -308,6 +330,8 @@ function renderCheckoutPage(listingId) {
         deliveryAddress: data.deliveryAddress,
         deliveryCity: data.deliveryCity,
         note: data.note,
+        paymentMethod: data.paymentMethod,
+        paymentReference: data.paymentReference,
       });
 
       if (data.remember) {
@@ -333,6 +357,7 @@ function renderCheckoutPage(listingId) {
    ORDER CONFIRMATION
    ===================================================================== */
 function renderConfirmationPage(order, listing) {
+  const methodLabel = paymentOptions.find((o) => o.id === order.paymentMethod)?.label || order.paymentMethod;
   dom.confirmationView.innerHTML = `
     <div class="status-shell">
       <div class="status-panel">
@@ -340,13 +365,14 @@ function renderConfirmationPage(order, listing) {
         <h1>Order placed</h1>
         <p>
           Your order for <strong>${esc(listing?.title || "your piece")}</strong> is confirmed.
-          We will QC it before dispatch, and you pay
-          <strong>${esc(money(order.amount))}</strong> in cash on delivery.
+          We are checking your <strong>${esc(money(order.amount))}</strong> ${esc(methodLabel)} payment —
+          your piece is QC'd and dispatched once it clears.
         </p>
         <div class="confirmation-detail">
           <div><span>Order number</span><strong>${esc(order.id)}</strong></div>
           <div><span>Delivering to</span><strong>${esc(order.deliveryCity || "")}</strong></div>
-          <div><span>Payment</span><strong>Cash on Delivery</strong></div>
+          <div><span>Payment</span><strong>${esc(methodLabel)}</strong></div>
+          <div><span>Reference</span><strong>${esc(order.paymentReference || "")}</strong></div>
         </div>
         <div class="status-actions">
           <button class="button primary" type="button" data-view-target="orders">Track my order</button>
