@@ -136,6 +136,10 @@ addColumn("orders", "seller_id", "TEXT");
 addColumn("orders", "shipped_at", "TEXT");
 addColumn("orders", "payout_status", "TEXT DEFAULT 'unpaid'");
 addColumn("orders", "delivery_address", "TEXT");
+// Stored at order time so the commission rate can change later without
+// rewriting what past orders actually owed.
+addColumn("orders", "commission_amount", "REAL DEFAULT 0");
+addColumn("orders", "payout_amount", "REAL DEFAULT 0");
 
 /* ---------- ID helper ---------- */
 export function makeId(prefix = "id") {
@@ -223,6 +227,8 @@ function rowToOrder(row) {
     deliveryAddress: row.delivery_address,
     note: row.note,
     amount: row.amount,
+    commissionAmount: row.commission_amount,
+    payoutAmount: row.payout_amount,
     paymentMethod: row.payment_method,
     paymentStatus: row.payment_status,
     paymentReference: row.payment_reference,
@@ -565,8 +571,16 @@ export function toggleSave(accountId, listingId) {
 }
 
 /* ---------- Orders ---------- */
+// Bechdou's cut of each sale. A named export so index.js and db.js agree on
+// one number, and so it is easy to find when it needs to change.
+export const COMMISSION_RATE = 0.20;
+
 export function createOrder(data) {
   const now = new Date().toISOString();
+  const amount = Number(data.amount) || 0;
+  // Rounded to the rupee — fractional paisa serve no purpose in a manual
+  // wallet-transfer flow and would just look like a bug to the seller.
+  const commissionAmount = Math.round(amount * COMMISSION_RATE);
   const order = {
     id: makeId("ord"),
     listing_id: data.listingId,
@@ -577,7 +591,9 @@ export function createOrder(data) {
     delivery_city: String(data.deliveryCity || "").trim(),
     delivery_address: String(data.deliveryAddress || "").trim(),
     note: String(data.note || "").trim(),
-    amount: Number(data.amount) || 0,
+    amount,
+    commission_amount: commissionAmount,
+    payout_amount: amount - commissionAmount,
     payment_method: data.paymentMethod || "manual-admin",
     payment_status: data.paymentStatus || "Awaiting payment",
     payment_reference: String(data.paymentReference || "").trim(),
@@ -587,12 +603,13 @@ export function createOrder(data) {
   };
   db.prepare(
     `INSERT INTO orders (id,listing_id,buyer_id,buyer_name,seller_id,contact,delivery_city,delivery_address,
-      note,amount,payment_method,payment_status,payment_reference,status,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      note,amount,commission_amount,payout_amount,payment_method,payment_status,payment_reference,status,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     order.id, order.listing_id, order.buyer_id, order.buyer_name, order.seller_id, order.contact,
-    order.delivery_city, order.delivery_address, order.note, order.amount, order.payment_method,
-    order.payment_status, order.payment_reference, order.status, order.created_at, order.updated_at,
+    order.delivery_city, order.delivery_address, order.note, order.amount, order.commission_amount,
+    order.payout_amount, order.payment_method, order.payment_status, order.payment_reference,
+    order.status, order.created_at, order.updated_at,
   );
   return getOrderById(order.id);
 }
@@ -720,11 +737,11 @@ const SEED_SAVES = [
 ];
 
 const SEED_ORDERS = [
-  { id: "ord-seed-1", listing_id: "lst-merlot-blouse", buyer_id: "acct-buyer", buyer_name: "Mina Buyer", contact: "+92 333 2222222", delivery_city: "Karachi", note: "Please confirm cuff condition before dispatch.", amount: 2200, payment_method: "wallet-transfer", payment_status: "Paid", payment_reference: "JC-44921", status: "QC passed", created_at: "2026-06-06T11:10:00.000Z", updated_at: "2026-06-06T15:40:00.000Z" },
+  { id: "ord-seed-1", listing_id: "lst-merlot-blouse", buyer_id: "acct-buyer", buyer_name: "Mina Buyer", seller_id: "acct-seller", contact: "+92 333 2222222", delivery_city: "Karachi", note: "Please confirm cuff condition before dispatch.", amount: 2200, commission_amount: 440, payout_amount: 1760, payment_method: "jazzcash", payment_status: "Paid", payment_reference: "JC-44921", status: "QC passed", created_at: "2026-06-06T11:10:00.000Z", updated_at: "2026-06-06T15:40:00.000Z" },
 ];
 
 const SEED_EVENTS = [
-  { id: "evt-seed-1", type: "payment", message: "Wallet transfer verified for Merlot satin blouse.", actor_id: "acct-admin", entity_id: "ord-seed-1", created_at: "2026-06-06T15:40:00.000Z" },
+  { id: "evt-seed-1", type: "payment", message: "JazzCash payment verified for Merlot satin blouse.", actor_id: "acct-admin", entity_id: "ord-seed-1", created_at: "2026-06-06T15:40:00.000Z" },
   { id: "evt-seed-2", type: "listing", message: "Cream linen blazer approved for the public drop.", actor_id: "acct-admin", entity_id: "lst-linen-blazer", created_at: "2026-06-05T16:05:00.000Z" },
 ];
 
@@ -761,13 +778,14 @@ export function reseed() {
     const insSave = db.prepare("INSERT INTO saves (account_id, listing_id) VALUES (?, ?)");
     for (const [acc, lst] of SEED_SAVES) insSave.run(acc, lst);
     const insOrd = db.prepare(
-      `INSERT INTO orders (id,listing_id,buyer_id,buyer_name,contact,delivery_city,note,amount,
-        payment_method,payment_status,payment_reference,status,created_at,updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO orders (id,listing_id,buyer_id,buyer_name,seller_id,contact,delivery_city,note,amount,
+        commission_amount,payout_amount,payment_method,payment_status,payment_reference,status,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     );
     for (const o of SEED_ORDERS) {
-      insOrd.run(o.id, o.listing_id, o.buyer_id, o.buyer_name, o.contact, o.delivery_city, o.note, o.amount,
-        o.payment_method, o.payment_status, o.payment_reference, o.status, o.created_at, o.updated_at);
+      insOrd.run(o.id, o.listing_id, o.buyer_id, o.buyer_name, o.seller_id, o.contact, o.delivery_city, o.note,
+        o.amount, o.commission_amount, o.payout_amount, o.payment_method, o.payment_status, o.payment_reference,
+        o.status, o.created_at, o.updated_at);
     }
     const insEvt = db.prepare("INSERT INTO events (id,type,message,actor_id,entity_id,created_at) VALUES (?,?,?,?,?,?)");
     for (const e of SEED_EVENTS) insEvt.run(e.id, e.type, e.message, e.actor_id, e.entity_id, e.created_at);

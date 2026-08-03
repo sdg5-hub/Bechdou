@@ -1,7 +1,9 @@
 const STORAGE_KEY = "bechdou-mvp-marketplace-v1";
 const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
 const DEMO_PASSWORD = "bechdou123";
-const COMMISSION_RATE = 0.15;
+// Must match server/db.js COMMISSION_RATE — only used as a display fallback
+// for orders created before commission was stored per-order.
+const COMMISSION_RATE = 0.20;
 
 let paymentOptions = [
   {
@@ -351,7 +353,6 @@ async function boot() {
   } catch (error) {
     showToast(error.message || "Could not reach the Bechdou server.");
   }
-  renderPaymentMethodOptions();
   renderAll();
   // Handle hash routes (e.g. #checkout-success redirect from Stripe).
   if (window.location.hash && window.location.hash !== "#home") {
@@ -411,15 +412,6 @@ const dom = {
   filterSaved: document.getElementById("filter-saved"),
   resultsBar: document.getElementById("results-bar"),
   listingGrid: document.getElementById("listing-grid"),
-  orderForm: document.getElementById("order-form"),
-  requestEmpty: document.getElementById("request-empty"),
-  requestSelected: document.getElementById("request-selected"),
-  orderName: document.getElementById("order-name"),
-  orderContact: document.getElementById("order-contact"),
-  orderPaymentMethod: document.getElementById("order-payment-method"),
-  orderPaymentReference: document.getElementById("order-payment-reference"),
-  orderDeliveryCity: document.getElementById("order-delivery-city"),
-  orderNote: document.getElementById("order-note"),
   listingForm: document.getElementById("listing-form"),
   imageFile: document.getElementById("listing-image-file"),
   imagePreview: document.getElementById("image-preview"),
@@ -731,8 +723,23 @@ function paymentLabel(id) {
   return paymentOptionById(id).label;
 }
 
+// Fallback math for orders that predate storing commission/payout per order.
+// Prefer order.payoutAmount / order.commissionAmount wherever an order object
+// is available — they are the actual figures charged at the time of sale.
 function payoutFor(amount) {
   return Math.round(Number(amount || 0) * (1 - COMMISSION_RATE));
+}
+
+function commissionFor(amount) {
+  return Math.round(Number(amount || 0) * COMMISSION_RATE);
+}
+
+function payoutForOrder(order) {
+  return order.payoutAmount || payoutFor(order.amount);
+}
+
+function commissionForOrder(order) {
+  return order.commissionAmount || commissionFor(order.amount);
 }
 
 function listingQualityScore(listing) {
@@ -827,7 +834,7 @@ function marketplaceMetrics() {
     paidOrders: paidOrders.length,
     totalGmv,
     pendingGmv,
-    payoutDue: paidOrders.reduce((sum, order) => sum + payoutFor(order.amount), 0),
+    payoutDue: paidOrders.reduce((sum, order) => sum + payoutForOrder(order), 0),
     sellThrough30: listedItems.length ? Math.round((soldWithin30.length / listedItems.length) * 100) : 0,
     timeToFirstSale: firstSaleDurations.length
       ? Math.round(firstSaleDurations.reduce((sum, days) => sum + days, 0) / firstSaleDurations.length)
@@ -863,7 +870,7 @@ function sellerMetrics(account = activeAccount()) {
     saves,
     paidOrders: paidOrders.length,
     gross: paidOrders.reduce((sum, order) => sum + Number(order.amount || 0), 0),
-    payout: paidOrders.reduce((sum, order) => sum + payoutFor(order.amount), 0),
+    payout: paidOrders.reduce((sum, order) => sum + payoutForOrder(order), 0),
   };
 }
 
@@ -923,6 +930,11 @@ function renderViewOnEnter(view) {
     case "profile": return renderProfilePage();
     case "orders": return renderOrdersPage();
     case "saved": return renderSavedPage();
+    case "closets": return renderClosetsPage();
+    case "about": case "payments": case "buyer-protection":
+    case "shipping-delivery": case "seller-guide": case "contact":
+    case "terms": case "privacy":
+      return renderStaticPage(view);
     default: return undefined;
   }
 }
@@ -1288,56 +1300,6 @@ function renderBrowse() {
     `;
 }
 
-function renderPaymentMethodOptions(selectedMethod = dom.orderPaymentMethod.value) {
-  const checkoutOptions = paymentOptions.filter((option) => option.checkout !== false);
-  dom.orderPaymentMethod.innerHTML = checkoutOptions
-    .map(
-      (option) => `
-        <option value="${escapeHtml(option.id)}" ${option.disabled ? "disabled" : ""} ${
-          option.id === selectedMethod ? "selected" : ""
-        }>
-          ${escapeHtml(option.label)}${option.disabled ? " (disabled)" : ""}
-        </option>
-      `,
-    )
-    .join("");
-
-  if (dom.orderPaymentMethod.selectedOptions[0]?.disabled) {
-    dom.orderPaymentMethod.value = checkoutOptions.find((option) => !option.disabled)?.id || "";
-  }
-}
-
-function renderRequestPanel() {
-  const listing = listingById(state.selectedListingId);
-  const account = activeAccount();
-
-  dom.requestEmpty.hidden = Boolean(listing);
-  dom.orderForm.hidden = !listing;
-  dom.requestEmpty.classList.toggle("is-hidden", Boolean(listing));
-  dom.orderForm.classList.toggle("is-hidden", !listing);
-
-  if (!listing) return;
-
-  renderPaymentMethodOptions();
-  const quality = listingQualityScore(listing);
-
-  dom.requestSelected.innerHTML = `
-    <span class="status approved">Selected</span>
-    <strong>${escapeHtml(listing.title)}</strong>
-    <p>${escapeHtml(money(listing.price))} - ${escapeHtml(listing.sellerName)}</p>
-    <div class="request-detail-grid">
-      <span>${escapeHtml(listing.brand)}</span>
-      <span>${escapeHtml(listing.size)}</span>
-      <span>${escapeHtml(listing.condition)}</span>
-      <span>${quality}% QC</span>
-    </div>
-  `;
-
-  if (account && !dom.orderName.value) dom.orderName.value = account.name;
-  if (account && !dom.orderContact.value) dom.orderContact.value = account.phone || account.email;
-  if (account && !dom.orderDeliveryCity.value) dom.orderDeliveryCity.value = account.city || "";
-}
-
 function queueItem(listing, options = {}) {
   const quality = listingQualityScore(listing);
   const actions = options.actions
@@ -1631,6 +1593,29 @@ function closetCard(seller) {
     </article>`;
 }
 
+function renderClosetsPage() {
+  const panel = document.querySelector('[data-view-panel="closets"]');
+  if (!panel) return;
+  const sellers = state.accounts
+    .filter((account) => sellerApprovedListings(account.id).length > 0)
+    .sort((a, b) => followerCount(b) - followerCount(a));
+
+  panel.innerHTML = `
+    <div class="page-shell">
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Community</p>
+          <h1>Seller closets</h1>
+        </div>
+        <span class="count-pill">${sellers.length}</span>
+      </header>
+      ${sellers.length
+        ? `<div class="closet-row">${sellers.map(closetCard).join("")}</div>`
+        : `<p class="empty-note">No closets with approved pieces yet.</p>`}
+    </div>
+  `;
+}
+
 function renderHomeClosets() {
   const sellers = state.accounts
     .filter((account) => sellerApprovedListings(account.id).length > 0)
@@ -1749,14 +1734,14 @@ function renderProductDetail(listingId) {
           </div>
 
           <div class="pd-trust">
-            <div><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg> Cash on Delivery — pay when it arrives</div>
+            <div><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg> JazzCash, EasyPaisa, or bank transfer</div>
             <div><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg> QC checked before dispatch</div>
             <div><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg> TCS &amp; Leopards nationwide</div>
           </div>
 
           <div class="pd-cta">
             <button class="button primary lg" type="button" data-request-id="${escapeHtml(listing.id)}" ${availability.locked ? "disabled" : ""}>
-              ${availability.locked ? escapeHtml(availability.label) : "Request (COD)"}
+              ${availability.locked ? escapeHtml(availability.label) : "Buy now"}
             </button>
             <a class="button wa-btn" href="${whatsappLink(seller, listing)}" target="_blank" rel="noopener">${icons.whatsapp} WhatsApp seller</a>
           </div>
@@ -1871,7 +1856,9 @@ function handleRoute() {
 // Routes that render a full page rather than a storefront panel.
 const AUTH_ROUTES = new Set([
   "login", "signup", "forgot-password", "reset-password", "verify-email",
-  "profile", "orders", "saved", "checkout", "confirmation",
+  "profile", "orders", "saved", "checkout", "confirmation", "closets",
+  "about", "payments", "buyer-protection", "shipping-delivery",
+  "seller-guide", "contact", "terms", "privacy",
 ]);
 
 window.addEventListener("hashchange", handleRoute);
@@ -1923,12 +1910,12 @@ function openQuickView(listingId) {
         <button class="button secondary sm" type="button" data-open-closet="${escapeHtml(listing.sellerId)}">Visit closet</button>
       </div>
       <div class="qv__trust">
-        <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg> Cash on Delivery — pay when it arrives</div>
+        <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg> JazzCash, EasyPaisa, or bank transfer</div>
         <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg> Buyer Protection · QC checked before dispatch</div>
         <div><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg> TCS &amp; Leopards delivery nationwide</div>
       </div>
       <div class="qv__cta">
-        <button class="button primary" type="button" data-qv-buy="${escapeHtml(listing.id)}" ${availability.locked ? "disabled" : ""}>${availability.locked ? escapeHtml(availability.label) : "Request (COD)"}</button>
+        <button class="button primary" type="button" data-qv-buy="${escapeHtml(listing.id)}" ${availability.locked ? "disabled" : ""}>${availability.locked ? escapeHtml(availability.label) : "Buy now"}</button>
         <a class="button wa-btn" href="${whatsappLink(seller, listing)}" target="_blank" rel="noopener">${icons.whatsapp} WhatsApp</a>
       </div>
       <button class="button secondary" style="width:100%;justify-content:center" type="button" data-toggle-save="${escapeHtml(listing.id)}">${icons.heart(saved)} ${saved ? "Saved to closet" : "Save to closet"}</button>
@@ -1955,7 +1942,6 @@ function renderAll() {
   renderPaymentSummary();
   renderAccount();
   renderBrowse();
-  renderRequestPanel();
   renderSellerQueue();
   renderAdmin();
 }
@@ -2105,65 +2091,6 @@ dom.listingForm.addEventListener("submit", async (event) => {
     await refresh();
     switchView("sell");
     showToast("Listing submitted for approval.");
-  } catch (error) {
-    showToast(error.message);
-  }
-});
-
-dom.orderForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const listing = listingById(state.selectedListingId);
-  const account = activeAccount();
-
-  if (!account) {
-    showToast("Log in or create an account first.");
-    switchView("login");
-    return;
-  }
-  if (!listing) {
-    showToast("Select an approved item first.");
-    return;
-  }
-  const availability = listingAvailability(listing.id);
-  if (availability.locked) {
-    showToast(`${listing.title} is ${availability.label.toLowerCase()}.`);
-    return;
-  }
-
-  const buyerPayload = {
-    listingId: listing.id,
-    buyerName: dom.orderName.value.trim() || account.name,
-    contact: dom.orderContact.value.trim() || account.phone || account.email,
-    deliveryCity: dom.orderDeliveryCity.value.trim() || account.city || "",
-    note: dom.orderNote.value.trim(),
-  };
-
-  // Stripe Checkout — redirect to hosted payment page.
-  if (dom.orderPaymentMethod.value === "stripe-checkout") {
-    try {
-      const { url } = await API.stripeCheckout(buyerPayload);
-      window.location.href = url;
-    } catch (error) {
-      showToast(error.message.includes("not configured")
-        ? "Stripe is not set up on this server — use Cash on Delivery instead."
-        : error.message);
-    }
-    return;
-  }
-
-  const payload = {
-    ...buyerPayload,
-    paymentMethod: dom.orderPaymentMethod.value,
-    paymentReference: dom.orderPaymentReference.value.trim(),
-  };
-
-  try {
-    await API.createOrder(payload);
-    state.selectedListingId = "";
-    dom.orderForm.reset();
-    await refresh();
-    switchView("orders");
-    showToast("Checkout requested — pay Cash on Delivery.");
   } catch (error) {
     showToast(error.message);
   }
@@ -2339,15 +2266,8 @@ document.addEventListener("click", (event) => {
   if (qvBuy) {
     const listing = listingById(qvBuy.dataset.qvBuy);
     if (!listing || listingAvailability(listing.id).locked) return;
-    state.selectedListingId = listing.id;
-    saveState();
     closeQuickView();
-    switchView("browse");
-    renderRequestPanel();
-    requestAnimationFrame(() => {
-      document.querySelector(".request-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    showToast(`${listing.title} added to checkout.`);
+    openCheckout(listing.id);
     return;
   }
 
@@ -2408,6 +2328,18 @@ document.addEventListener("click", (event) => {
   const categoryJump = event.target.closest("[data-category-jump]");
   if (categoryJump) {
     applyBrowse({ category: categoryJump.dataset.categoryJump });
+    return;
+  }
+
+  // Footer links to a section that lives inside the Home panel — switch
+  // views first, since scrollIntoView cannot reach an element hidden by
+  // display:none on an inactive panel.
+  const jumpHome = event.target.closest("[data-jump-home]");
+  if (jumpHome) {
+    switchView("home");
+    requestAnimationFrame(() => {
+      document.getElementById(jumpHome.dataset.jumpHome)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
     return;
   }
 
