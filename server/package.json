@@ -8,8 +8,8 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "start": "node --experimental-sqlite index.js",
-    "dev": "node --experimental-sqlite --watch index.js"
+    "start": "node --experimental-sqlite --env-file-if-exists=.env index.js",
+    "dev": "node --experimental-sqlite --env-file-if-exists=.env --watch index.js"
   },
   "dependencies": {
     "express": "^4.21.2",

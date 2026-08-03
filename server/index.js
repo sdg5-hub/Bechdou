@@ -12,6 +12,7 @@ import {
   listAccountsFull, publicSellerProfiles,
   updateAccountProfile, setAccountPassword, setEmailVerified, setAccountSuspended,
   issueAuthToken, consumeAuthToken,
+  createPendingSignup, getPendingSignupByEmail, consumePendingSignupByToken,
   listingsForViewer, approvedListings, getListingById, createListing, setListingStatus, incrementViews, toggleSave,
   updateListing, deleteListing, setListingSold,
   createOrder, getOrderById, ordersForViewer, ordersForListing, updateOrder, updateOrderByReference,
@@ -193,12 +194,16 @@ const emailLimiter = rateLimit({
   message: "Too many email requests. Please wait before requesting another.",
 });
 
+// Legacy path — resends against an already-created (pre-this-change) account.
 async function issueVerificationEmail(accountRow) {
   const { token, tokenHash } = createLinkToken();
   issueAuthToken(accountRow.id, "verify-email", tokenHash, VERIFY_TTL_MS);
   return sendVerificationEmail({ to: accountRow.email, name: accountRow.name, token });
 }
 
+// No account row is created here. Signup data sits in pending_signups until
+// the link is clicked, so an abandoned signup never blocks a retry with the
+// same email — there is nothing "already existing" to collide with.
 app.post("/api/auth/signup", signupLimiter, asyncRoute(async (req, res) => {
   const { name, email, password, role, phone, city } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password are required." });
@@ -208,13 +213,17 @@ app.post("/api/auth/signup", signupLimiter, asyncRoute(async (req, res) => {
   }
   if (getAccountRowByEmail(email)) return res.status(409).json({ error: "An account already exists for this email." });
 
-  const account = createAccount({ name, email, password, role, phone, city });
-  addEvent("account", `${account.name} created a ${account.role} account.`, account.id, account.id);
-  const delivery = await issueVerificationEmail(getAccountRowById(account.id));
+  const { token, tokenHash } = createLinkToken();
+  createPendingSignup(
+    { name, email, passwordHash: hashPassword(password), role, phone, city },
+    tokenHash,
+    VERIFY_TTL_MS,
+  );
+  const delivery = await sendVerificationEmail({ to: email, name, token });
 
-  res.status(201).json({
-    token: signToken({ sub: account.id, role: account.role }),
-    account,
+  res.status(202).json({
+    pendingVerification: true,
+    email: String(email).trim().toLowerCase(),
     emailSent: delivery.delivered,
   });
 }));
@@ -231,18 +240,73 @@ app.post("/api/auth/login", loginLimiter, asyncRoute((req, res) => {
   res.json({ token: signToken({ sub: row.id, role: row.role }), account: getAccountById(row.id, { full: true }) });
 }));
 
+// The account is actually created here, the moment the link is confirmed —
+// verifying an email and creating the account are now the same action.
 app.post("/api/auth/verify-email", asyncRoute((req, res) => {
-  const accountId = consumeAuthToken(hashLinkToken(req.body?.token), "verify-email");
+  const tokenHash = hashLinkToken(req.body?.token);
+
+  const pending = consumePendingSignupByToken(tokenHash);
+  if (pending) {
+    if (getAccountRowByEmail(pending.email)) {
+      // Two verification links existed and one already resolved this email.
+      return res.status(409).json({ error: "An account already exists for this email." });
+    }
+    const account = createAccount({
+      name: pending.name,
+      email: pending.email,
+      password: null,
+      passwordHash: pending.password_hash,
+      role: pending.role,
+      phone: pending.phone,
+      city: pending.city,
+    });
+    setEmailVerified(account.id);
+    addEvent("account", `${account.name} created a ${account.role} account.`, account.id, account.id);
+    return res.json({
+      token: signToken({ sub: account.id, role: account.role }),
+      account: getAccountById(account.id, { full: true }),
+    });
+  }
+
+  // Fallback for accounts created before this change, or created directly
+  // by an admin — those still verify against an existing account row.
+  const accountId = consumeAuthToken(tokenHash, "verify-email");
   if (!accountId) return res.status(400).json({ error: "This verification link is invalid or has expired." });
   setEmailVerified(accountId);
-  res.json({ account: getAccountById(accountId, { full: true }) });
+  const account = getAccountById(accountId, { full: true });
+  res.json({ token: signToken({ sub: account.id, role: account.role }), account });
 }));
 
-app.post("/api/auth/resend-verification", requireAuth, emailLimiter, asyncRoute(async (req, res) => {
-  const row = getAccountRowById(req.account.id);
-  if (row.email_verified) return res.json({ alreadyVerified: true });
-  const delivery = await issueVerificationEmail(row);
-  res.json({ emailSent: delivery.delivered });
+// Works both signed in (legacy unverified account) and signed out
+// (unfinished signup) — the "Resend email" button appears in both places.
+app.post("/api/auth/resend-verification", emailLimiter, asyncRoute(async (req, res) => {
+  if (req.account) {
+    const row = getAccountRowById(req.account.id);
+    if (row.email_verified) return res.json({ alreadyVerified: true });
+    const delivery = await issueVerificationEmail(row);
+    return res.json({ emailSent: delivery.delivered });
+  }
+
+  const email = String(req.body?.email || "").trim();
+  if (!email) return res.status(400).json({ error: "Email is required." });
+
+  const pending = getPendingSignupByEmail(email);
+  if (pending) {
+    const { token, tokenHash } = createLinkToken();
+    createPendingSignup(
+      { name: pending.name, email: pending.email, passwordHash: pending.password_hash, role: pending.role, phone: pending.phone, city: pending.city },
+      tokenHash,
+      VERIFY_TTL_MS,
+    );
+    const delivery = await sendVerificationEmail({ to: pending.email, name: pending.name, token });
+    return res.json({ emailSent: delivery.delivered });
+  }
+
+  // Unauthenticated + unknown email: report success without leaking whether
+  // an account exists, same as forgot-password.
+  const row = getAccountRowByEmail(email);
+  if (row && !row.email_verified) await issueVerificationEmail(row);
+  res.json({ emailSent: true });
 }));
 
 app.post("/api/auth/forgot-password", emailLimiter, asyncRoute(async (req, res) => {

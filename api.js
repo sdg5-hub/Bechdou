@@ -55,7 +55,7 @@ const API = (() => {
     login: (payload) => request("POST", "/auth/login", payload),
     logout: () => setToken(""),
     verifyEmail: (token) => request("POST", "/auth/verify-email", { token }),
-    resendVerification: () => request("POST", "/auth/resend-verification"),
+    resendVerification: (email) => request("POST", "/auth/resend-verification", email ? { email } : {}),
     forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
     resetPassword: (token, password) => request("POST", "/auth/reset-password", { token, password }),
 

@@ -12,6 +12,14 @@ server/*.db-shm
 server/uploads/*
 !server/uploads/.gitkeep
 
+# Secrets — never commit these
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
 # Local tooling / editor config
 .claude/
 

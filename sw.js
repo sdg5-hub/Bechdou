@@ -1,17 +1,17 @@
 /* Bechdou service worker — app-shell caching + graceful offline fallback. */
-const CACHE = "bechdou-v24";
+const CACHE = "bechdou-v25";
 const SHELL = [
   "./",
   "./index.html",
   "./offline.html",
-  "./styles.css?v=24",
-  "./api.js?v=24",
-  "./pages.js?v=24",
-  "./pages-account.js?v=24",
-  "./admin.js?v=24",
-  "./script.js?v=24",
-  "./seller.js?v=24",
-  "./wire.js?v=24",
+  "./styles.css?v=25",
+  "./api.js?v=25",
+  "./pages.js?v=25",
+  "./pages-account.js?v=25",
+  "./admin.js?v=25",
+  "./script.js?v=25",
+  "./seller.js?v=25",
+  "./wire.js?v=25",
   "./manifest.webmanifest",
   "./assets/icon.svg",
 ];
