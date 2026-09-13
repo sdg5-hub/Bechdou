@@ -178,6 +178,8 @@ Environment variables (all optional):
 | `BECHDOU_DEMO`       | on in dev, off in prod | `1` forces the demo seed + the "Reset demo data" button back on |
 | `BECHDOU_SECRET`     | dev secret             | **Set this in production** (signs tokens) |
 | `BECHDOU_DB`         | `server/bechdou.db`    | SQLite file path                 |
+| `BECHDOU_SUPPORT_WHATSAPP` | —                | Digits incl. country code. Blank hides the WhatsApp buttons |
+| `BECHDOU_SUPPORT_EMAIL`    | —                | Blank hides the email button on Contact |
 | `RESEND_API_KEY`     | —                      | Enables real email delivery      |
 | `BECHDOU_FROM_EMAIL` | `onboarding@resend.dev`| Sender address on outgoing email |
 | `BECHDOU_APP_URL`    | `http://localhost:4000`| Base URL used in email links     |
@@ -275,10 +277,22 @@ Work top to bottom. The first four are the ones that actually hurt if skipped.
    console, so **nobody can finish creating an account**.
 5. **Serve over HTTPS.** Sessions are bearer tokens; on plain HTTP they are
    readable in transit.
-6. Optional: add `GOOGLE_*` / `FACEBOOK_*` for social sign-in, and replace the
+6. **Set your support channels.** `BECHDOU_SUPPORT_WHATSAPP` and
+   `BECHDOU_SUPPORT_EMAIL`. Until you do, the Contact page and the "Ask about
+   this piece" buttons stay hidden rather than linking somewhere dead.
+7. Optional: add `GOOGLE_*` / `FACEBOOK_*` for social sign-in, and replace the
    placeholder Terms and Privacy pages with real ones.
-7. **Back up `server/bechdou.db`.** It holds every account, listing and order.
+8. **Back up `server/bechdou.db`.** It holds every account, listing and order.
    Uploaded photos live in `server/uploads/` — back that up with it.
+
+### A note on copy
+
+The storefront deliberately makes no claim it cannot keep. There are no
+testimonials until real buyers give them, no follower counts (there is no
+following feature), and the "Verified" badge means one specific thing: the
+seller confirmed their email. If you add marketing copy, keep it to things
+the product actually does — the FAQ and Buyer Protection pages describe the
+real prepaid flow, not a cash-on-delivery one.
 
 ---
 

@@ -496,6 +496,10 @@ app.get("/api/bootstrap", asyncRoute((req, res) => {
     commissionRate: COMMISSION_RATE,
     oauthProviders: configuredProviders(),
     demoMode: DEMO_DATA_ENABLED,
+    // Digits only, no "+" — used to build wa.me links. Empty hides the
+    // WhatsApp buttons rather than linking to a number nobody answers.
+    supportWhatsapp: String(process.env.BECHDOU_SUPPORT_WHATSAPP || "").replace(/[^\d]/g, ""),
+    supportEmail: process.env.BECHDOU_SUPPORT_EMAIL || "",
     marketStatus: marketStatus(),
   });
 }));

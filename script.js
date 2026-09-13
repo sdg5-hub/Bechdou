@@ -1,12 +1,15 @@
-const STORAGE_KEY = "bechdou-mvp-marketplace-v1";
 const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
-const DEMO_PASSWORD = "bechdou123";
 // Must match server/db.js COMMISSION_RATE — only used as a display fallback
 // for orders created before commission was stored per-order.
 const COMMISSION_RATE = 0.20;
 
 let oauthProviders = [];
 let demoMode = false;
+// Set from server env (BECHDOU_SUPPORT_WHATSAPP / _EMAIL). Empty until
+// configured, which hides the contact buttons instead of pointing people at
+// a placeholder number.
+let supportWhatsapp = "";
+let supportEmail = "";
 
 // Replaced wholesale by the server's real account details on bootstrap (see
 // applyBootstrap). These labels exist only so an order placed before the
@@ -17,274 +20,6 @@ let paymentOptions = [
   { id: "easypaisa", label: "EasyPaisa" },
   { id: "bank-transfer", label: "Bank transfer" },
 ];
-
-const ceoQuestions = [
-  "How do we raise first-30-day sell-through without lowering listing quality?",
-  "What seller activation loop gets random public sellers to their first sale fastest?",
-  "What checkout, QC, and delivery promise makes random buyers trust open-marketplace sellers?",
-  "What commission and payout cadence protects Bechdou margin while sellers still feel liquid?",
-  "Which circularity metric should sit beside GMV in every investor and brand narrative?",
-];
-
-function hashPassword(password) {
-  const text = String(password || "");
-  let hash = 2166136261;
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return `demo-${(hash >>> 0).toString(16)}`;
-}
-
-function legacyPasswordHash(password) {
-  try {
-    return btoa(unescape(encodeURIComponent(String(password || ""))));
-  } catch (error) {
-    return "";
-  }
-}
-
-const seedState = {
-  accounts: [
-    {
-      id: "acct-admin",
-      name: "Bechdou Admin",
-      email: "admin@bechdou.pk",
-      passwordHash: hashPassword(DEMO_PASSWORD),
-      role: "admin",
-      phone: "+92 300 0000000",
-      city: "Lahore",
-      handle: "@bechdouhq",
-      trustScore: 100,
-      savedListingIds: ["lst-blue-top"],
-      createdAt: "2026-06-01T08:00:00.000Z",
-    },
-    {
-      id: "acct-seller",
-      name: "Aiza Closet",
-      email: "aiza@example.com",
-      passwordHash: hashPassword(DEMO_PASSWORD),
-      role: "seller",
-      phone: "+92 321 1111111",
-      city: "Lahore",
-      handle: "@aizacloset",
-      trustScore: 92,
-      savedListingIds: [],
-      createdAt: "2026-06-01T08:05:00.000Z",
-    },
-    {
-      id: "acct-buyer",
-      name: "Mina Buyer",
-      email: "mina@example.com",
-      passwordHash: hashPassword(DEMO_PASSWORD),
-      role: "buyer",
-      phone: "+92 333 2222222",
-      city: "Karachi",
-      handle: "@minabuyer",
-      trustScore: 86,
-      savedListingIds: ["lst-merlot-blouse", "lst-cardigan-flats"],
-      createdAt: "2026-06-01T08:10:00.000Z",
-    },
-    {
-      id: "acct-seller-noor",
-      name: "Noor Vintage",
-      email: "noor@example.com",
-      passwordHash: hashPassword(DEMO_PASSWORD),
-      role: "seller",
-      phone: "+92 345 3334444",
-      city: "Islamabad",
-      handle: "@noorvintage",
-      trustScore: 89,
-      savedListingIds: ["lst-blue-top"],
-      createdAt: "2026-06-01T09:30:00.000Z",
-    },
-  ],
-  currentUserId: "acct-buyer",
-  listings: [
-    {
-      id: "lst-blue-top",
-      title: "Powder blue ruched top",
-      brand: "Zara",
-      price: 1450,
-      retailPrice: 3900,
-      category: "Tops",
-      size: "S",
-      condition: "Like new",
-      location: "Lahore",
-      color: "Powder blue",
-      fabric: "Cotton blend",
-      measurements: "Bust 32 in, length 18 in",
-      flaws: "No visible flaws",
-      sellerId: "acct-seller",
-      sellerName: "Aiza Closet",
-      description: "Soft summer top with a clean fit and merlot bag styling.",
-      image: "./assets/listing-blue-top.png",
-      status: "approved",
-      qualityChecks: {
-        frontPhoto: true,
-        backPhoto: true,
-        labelPhoto: true,
-        measurements: true,
-      },
-      views: 148,
-      savedBy: ["acct-admin"],
-      createdAt: "2026-06-02T08:30:00.000Z",
-    },
-    {
-      id: "lst-merlot-blouse",
-      title: "Merlot satin blouse",
-      brand: "Mango",
-      price: 2200,
-      retailPrice: 6400,
-      category: "Tops",
-      size: "M",
-      condition: "Lightly worn",
-      location: "Islamabad",
-      color: "Deep merlot",
-      fabric: "Satin",
-      measurements: "Bust 36 in, length 23 in",
-      flaws: "Tiny pull near left cuff",
-      sellerId: "acct-seller",
-      sellerName: "Aiza Closet",
-      description: "Deep merlot sheen, easy evening piece, one small cuff pull.",
-      image: "./assets/listing-merlot-blouse.png",
-      status: "approved",
-      qualityChecks: {
-        frontPhoto: true,
-        backPhoto: true,
-        labelPhoto: false,
-        measurements: true,
-      },
-      views: 203,
-      savedBy: ["acct-buyer"],
-      createdAt: "2026-06-03T10:15:00.000Z",
-    },
-    {
-      id: "lst-cardigan-flats",
-      title: "Cardigan and ballet flats",
-      brand: "Charles & Keith",
-      price: 3900,
-      retailPrice: 9500,
-      category: "Shoes",
-      size: "38",
-      condition: "Brand new",
-      location: "Karachi",
-      color: "Cream",
-      fabric: "Faux leather",
-      measurements: "EU 38, heel 0.5 in",
-      flaws: "Unworn",
-      sellerId: "acct-seller-noor",
-      sellerName: "Noor Vintage",
-      description: "Cream flats paired with a powder blue cardigan set.",
-      image: "./assets/listing-cardigan-flats.png",
-      status: "approved",
-      qualityChecks: {
-        frontPhoto: true,
-        backPhoto: true,
-        labelPhoto: true,
-        measurements: true,
-      },
-      views: 121,
-      savedBy: ["acct-buyer"],
-      createdAt: "2026-06-04T07:45:00.000Z",
-    },
-    {
-      id: "lst-linen-blazer",
-      title: "Cream linen blazer",
-      brand: "Massimo Dutti",
-      price: 5200,
-      retailPrice: 18000,
-      category: "Outerwear",
-      size: "M",
-      condition: "Like new",
-      location: "Lahore",
-      color: "Cream",
-      fabric: "Linen blend",
-      measurements: "Shoulder 15 in, length 27 in",
-      flaws: "Freshly dry cleaned",
-      sellerId: "acct-seller-noor",
-      sellerName: "Noor Vintage",
-      description: "Lightweight blazer with old-money structure and minimal wear.",
-      image: FALLBACK_IMAGE,
-      status: "approved",
-      qualityChecks: {
-        frontPhoto: true,
-        backPhoto: true,
-        labelPhoto: true,
-        measurements: true,
-      },
-      views: 96,
-      savedBy: [],
-      createdAt: "2026-06-05T12:20:00.000Z",
-    },
-    {
-      id: "lst-pending-bag",
-      title: "Cherry shoulder bag",
-      brand: "Local boutique",
-      price: 2600,
-      retailPrice: 5200,
-      category: "Accessories",
-      size: "One size",
-      condition: "Like new",
-      location: "Lahore",
-      color: "Merlot",
-      fabric: "Patent faux leather",
-      measurements: "9 x 5 in",
-      flaws: "Light hardware scratches",
-      sellerId: "acct-seller",
-      sellerName: "Aiza Closet",
-      description: "Structured mini shoulder bag with a glossy merlot finish.",
-      image: FALLBACK_IMAGE,
-      status: "pending",
-      qualityChecks: {
-        frontPhoto: true,
-        backPhoto: false,
-        labelPhoto: false,
-        measurements: true,
-      },
-      views: 34,
-      savedBy: [],
-      createdAt: "2026-06-05T14:20:00.000Z",
-    },
-  ],
-  orders: [
-    {
-      id: "ord-seed-1",
-      listingId: "lst-merlot-blouse",
-      buyerId: "acct-buyer",
-      buyerName: "Mina Buyer",
-      contact: "+92 333 2222222",
-      deliveryCity: "Karachi",
-      note: "Please confirm cuff condition before dispatch.",
-      amount: 2200,
-      paymentMethod: "wallet-transfer",
-      paymentStatus: "Paid",
-      paymentReference: "JC-44921",
-      status: "QC passed",
-      createdAt: "2026-06-06T11:10:00.000Z",
-      updatedAt: "2026-06-06T15:40:00.000Z",
-    },
-  ],
-  auditLog: [
-    {
-      id: "evt-seed-1",
-      type: "payment",
-      message: "Wallet transfer verified for Merlot satin blouse.",
-      actorId: "acct-admin",
-      entityId: "ord-seed-1",
-      createdAt: "2026-06-06T15:40:00.000Z",
-    },
-    {
-      id: "evt-seed-2",
-      type: "listing",
-      message: "Cream linen blazer approved for the public drop.",
-      actorId: "acct-admin",
-      entityId: "lst-linen-blazer",
-      createdAt: "2026-06-05T16:05:00.000Z",
-    },
-  ],
-  selectedListingId: "",
-};
 
 // State is hydrated from the backend (/api/bootstrap) — no longer localStorage.
 let state = {
@@ -316,6 +51,8 @@ function applyBootstrap(data) {
     oauthProviders = data.oauthProviders;
   }
   demoMode = Boolean(data.demoMode);
+  supportWhatsapp = String(data.supportWhatsapp || "");
+  supportEmail = String(data.supportEmail || "");
 }
 
 async function refresh() {
@@ -373,12 +110,6 @@ const dom = {
   ordersView: document.getElementById("orders-view"),
   savedView: document.getElementById("saved-view"),
   adminView: document.getElementById("admin-view"),
-  activeUserCard: document.getElementById("active-user-card"),
-  marketMetrics: document.getElementById("market-metrics"),
-  roleDashboardTitle: document.getElementById("role-dashboard-title"),
-  roleDashboard: document.getElementById("role-dashboard"),
-  activityFeed: document.getElementById("activity-feed"),
-  ceoQuestions: document.getElementById("ceo-questions"),
   searchInput: document.getElementById("search-input"),
   filterCity: document.getElementById("filter-city"),
   filterCondition: document.getElementById("filter-condition"),
@@ -434,180 +165,60 @@ function sellerApprovedListings(sellerId) {
   );
 }
 
+// "Verified closet" means the seller confirmed their email address. It used
+// to mean `trustScore >= 88`, a seeded constant no real seller could ever
+// earn — so every genuine signup was permanently unverified while demo
+// accounts wore the badge.
 function isVerifiedSeller(account) {
-  return (account?.trustScore || 0) >= 88;
+  return account?.emailVerified === true;
 }
 
+// Real saves only. This used to add `views / 9` on top, which showed buyers
+// a like count that nobody had actually given.
 function loveCount(listing) {
-  return (listing.savedBy?.length || 0) + Math.round((listing.views || 0) / 9);
+  return listing.savedBy?.length || 0;
 }
 
-function followerCount(account) {
-  const items = sellerApprovedListings(account.id).length;
-  return (account.trustScore || 70) * 4 + items * 9;
+// How many pieces are actually live in this closet. Replaces a "followers"
+// figure that was computed as `trustScore * 4 + items * 9` — Bechdou has no
+// following feature, so that number was invented.
+function closetSize(account) {
+  return sellerApprovedListings(account.id).length;
 }
 
-function whatsappLink(account, listing) {
-  const phone = String(account?.phone || "+92 300 0000000").replace(/[^\d]/g, "");
+// Pieces this closet has actually sold, and the year it opened — both read
+// straight off real records rather than being derived from a trust score.
+function soldCount(account) {
+  return state.listings.filter(
+    (listing) => listing.sellerId === account.id && listing.sold,
+  ).length;
+}
+
+function memberSince(account) {
+  const date = new Date(account.createdAt);
+  return Number.isNaN(date.getTime()) ? "—" : String(date.getFullYear());
+}
+
+// Questions about a piece go to Bechdou, not to the seller directly.
+// A public seller profile deliberately carries no phone number, so the old
+// version of this fell back to a placeholder ("+92 300 0000000") on every
+// listing — a number nobody answers. Routing through support also keeps the
+// sale on-platform, which is what the seller's payout depends on.
+// Returns "" when no support number is configured, so the caller can hide
+// the button instead of rendering a dead link.
+function supportChatLink(listing) {
+  if (!supportWhatsapp) return "";
   const text = encodeURIComponent(
-    `Hi ${account?.name || "there"}, is "${listing.title}" (${money(listing.price)}) still available on Bechdou?`,
+    `Hi Bechdou, I have a question about "${listing.title}" (${money(listing.price)}) — listing ${listing.id}.`,
   );
-  return `https://wa.me/${phone}?text=${text}`;
+  return `https://wa.me/${supportWhatsapp}?text=${text}`;
 }
 
-function loadState() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return normalizeState(saved ? JSON.parse(saved) : structuredClone(seedState));
-  } catch (error) {
-    return structuredClone(seedState);
-  }
-}
-
-function normalizeState(value) {
-  const next = {
-    accounts: Array.isArray(value?.accounts) ? value.accounts : [],
-    currentUserId: value?.currentUserId ?? seedState.currentUserId,
-    listings: Array.isArray(value?.listings) ? value.listings : structuredClone(seedState.listings),
-    orders: Array.isArray(value?.orders) ? value.orders : [],
-    auditLog: Array.isArray(value?.auditLog) ? value.auditLog : [],
-    selectedListingId: value?.selectedListingId || "",
-  };
-
-  next.accounts = mergeSeedRecords(next.accounts, seedState.accounts).map(normalizeAccount);
-  next.listings = mergeSeedRecords(next.listings, seedState.listings).map(normalizeListing);
-  next.orders = mergeSeedRecords(next.orders, seedState.orders).map((order) => normalizeOrder(order, next));
-  next.auditLog = mergeSeedRecords(next.auditLog, seedState.auditLog).map(normalizeEvent).slice(0, 60);
-
-  if (next.currentUserId && !next.accounts.some((account) => account.id === next.currentUserId)) {
-    next.currentUserId = "";
-  }
-
-  syncListingSaves(next);
-  return next;
-}
-
-function mergeSeedRecords(records, seedRecords) {
-  const result = Array.isArray(records) ? records.map((record) => ({ ...record })) : [];
-  seedRecords.forEach((seedRecord) => {
-    if (!result.some((record) => record.id === seedRecord.id)) {
-      result.push(structuredClone(seedRecord));
-    }
-  });
-  return result;
-}
-
-function normalizeAccount(account) {
-  const email = normalizeEmail(account.email);
-  return {
-    id: account.id || makeId("acct"),
-    name: account.name || "Bechdou User",
-    email,
-    passwordHash: account.passwordHash || hashPassword(DEMO_PASSWORD),
-    role: ["buyer", "seller", "admin"].includes(account.role) ? account.role : "buyer",
-    phone: account.phone || "",
-    city: account.city || "Pakistan",
-    handle: account.handle || handleFromName(account.name || email || "user"),
-    trustScore: clamp(Number(account.trustScore || 78), 40, 100),
-    savedListingIds: Array.isArray(account.savedListingIds) ? unique(account.savedListingIds) : [],
-    createdAt: account.createdAt || new Date().toISOString(),
-  };
-}
-
-function normalizeListing(listing) {
-  return {
-    id: listing.id || makeId("lst"),
-    title: listing.title || "Untitled piece",
-    brand: listing.brand || "Unbranded",
-    price: Number(listing.price || 0),
-    retailPrice: Number(listing.retailPrice || listing.originalPrice || listing.price || 0),
-    category: listing.category || "Tops",
-    size: listing.size || "One size",
-    condition: listing.condition || "Like new",
-    location: listing.location || "Pakistan",
-    color: listing.color || "",
-    fabric: listing.fabric || "",
-    measurements: listing.measurements || "",
-    flaws: listing.flaws || "Not specified",
-    sellerId: listing.sellerId || "acct-seller",
-    sellerName: listing.sellerName || "Bechdou Seller",
-    description: listing.description || "",
-    image: listing.image || FALLBACK_IMAGE,
-    status: listing.status || "pending",
-    qualityChecks: normalizeQualityChecks(listing.qualityChecks || listing),
-    qualityScore: Number(listing.qualityScore || 0),
-    views: Number(listing.views || 0),
-    savedBy: Array.isArray(listing.savedBy) ? unique(listing.savedBy) : [],
-    adminNote: listing.adminNote || "",
-    createdAt: listing.createdAt || new Date().toISOString(),
-    updatedAt: listing.updatedAt || listing.createdAt || new Date().toISOString(),
-  };
-}
-
-function normalizeQualityChecks(source) {
-  return {
-    frontPhoto: Boolean(source.frontPhoto ?? source.hasFrontPhoto ?? true),
-    backPhoto: Boolean(source.backPhoto ?? source.hasBackPhoto ?? false),
-    labelPhoto: Boolean(source.labelPhoto ?? source.hasLabelPhoto ?? false),
-    measurements: Boolean(source.measurements ?? source.hasMeasurements ?? false),
-  };
-}
-
-function normalizeOrder(order, sourceState = state) {
-  const listing = listingById(order.listingId, sourceState);
-  const buyer = sourceState.accounts?.find((account) => account.id === order.buyerId);
-  return {
-    id: order.id || makeId("ord"),
-    listingId: order.listingId || "",
-    buyerId: order.buyerId || "",
-    buyerName: order.buyerName || buyer?.name || "Buyer",
-    contact: order.contact || buyer?.phone || buyer?.email || "",
-    deliveryCity: order.deliveryCity || buyer?.city || "",
-    note: order.note || "",
-    amount: Number(order.amount || listing?.price || 0),
-    paymentMethod: order.paymentMethod || "wallet-transfer",
-    paymentStatus: order.paymentStatus || "Awaiting payment",
-    paymentReference: order.paymentReference || "",
-    status: order.status || "Requested",
-    createdAt: order.createdAt || new Date().toISOString(),
-    updatedAt: order.updatedAt || order.createdAt || new Date().toISOString(),
-  };
-}
-
-function normalizeEvent(event) {
-  return {
-    id: event.id || makeId("evt"),
-    type: event.type || "ops",
-    message: event.message || "Marketplace activity recorded.",
-    actorId: event.actorId || "",
-    entityId: event.entityId || "",
-    createdAt: event.createdAt || new Date().toISOString(),
-  };
-}
-
-function syncListingSaves(sourceState = state) {
-  const savedByListing = new Map();
-  sourceState.accounts.forEach((account) => {
-    account.savedListingIds = unique(account.savedListingIds || []);
-    account.savedListingIds.forEach((listingId) => {
-      if (!savedByListing.has(listingId)) savedByListing.set(listingId, []);
-      savedByListing.get(listingId).push(account.id);
-    });
-  });
-
-  sourceState.listings.forEach((listing) => {
-    const savedBy = new Set([...(listing.savedBy || []), ...(savedByListing.get(listing.id) || [])]);
-    listing.savedBy = Array.from(savedBy);
-  });
-}
-
-function saveState() {
-  // No-op: the backend is the source of truth. Kept so legacy call sites that
-  // only mutate transient UI state (e.g. selectedListingId) stay harmless.
-}
-
-function makeId(prefix) {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+// Renders the WhatsApp button only when there is a real number behind it.
+function supportChatButton(listing, label = "WhatsApp") {
+  const href = supportChatLink(listing);
+  if (!href) return "";
+  return `<a class="button wa-btn" href="${escapeHtml(href)}" target="_blank" rel="noopener">${icons.whatsapp} ${escapeHtml(label)}</a>`;
 }
 
 function unique(values) {
@@ -616,18 +227,6 @@ function unique(values) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
-}
-
-function normalizeEmail(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function handleFromName(value) {
-  const base = String(value || "bechdou")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "")
-    .slice(0, 18);
-  return `@${base || "bechdou"}`;
 }
 
 function activeAccount() {
@@ -652,10 +251,6 @@ function canSell(account = activeAccount()) {
 
 function canAdmin(account = activeAccount()) {
   return account?.role === "admin";
-}
-
-function passwordMatches(account, password) {
-  return account?.passwordHash === hashPassword(password) || account?.passwordHash === legacyPasswordHash(password);
 }
 
 function escapeHtml(value) {
@@ -687,10 +282,6 @@ function safeImage(value) {
 
 function money(value) {
   return `Rs ${Number(value || 0).toLocaleString("en-PK")}`;
-}
-
-function shortDate(value) {
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(value));
 }
 
 function slugStatus(status) {
@@ -746,17 +337,6 @@ function listingQualityScore(listing) {
   return clamp(Math.round(dataScore * 7 + checkScore * 8), 28, 100);
 }
 
-function orderIsOpen(order) {
-  return !["Cancelled", "Delivered"].includes(order.status);
-}
-
-function daysBetween(start, end) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (Number.isNaN(startDate.valueOf()) || Number.isNaN(endDate.valueOf())) return 0;
-  return Math.max(0, Math.round((endDate - startDate) / 86400000));
-}
-
 function listingAvailability(listingId) {
   const order = state.orders
     .filter((item) => item.listingId === listingId && item.status !== "Cancelled")
@@ -774,66 +354,6 @@ function listingAvailability(listingId) {
 
 function isSaved(listingId, account = activeAccount()) {
   return Boolean(account?.savedListingIds?.includes(listingId));
-}
-
-function marketplaceMetrics() {
-  const approved = state.listings.filter((listing) => listing.status === "approved");
-  const pending = state.listings.filter((listing) => listing.status === "pending");
-  const rejected = state.listings.filter((listing) => listing.status === "rejected");
-  const paidOrders = state.orders.filter((order) => order.paymentStatus === "Paid");
-  const openOrders = state.orders.filter(orderIsOpen);
-  const listedItems = state.listings.filter((listing) => listing.status !== "rejected");
-  const sellerAccounts = state.accounts.filter((account) => account.role === "seller");
-  const activeSellers = sellerAccounts.filter((account) =>
-    state.listings.some((listing) => listing.sellerId === account.id),
-  );
-  const soldWithin30 = paidOrders.filter((order) => {
-    const listing = listingById(order.listingId);
-    return listing && daysBetween(listing.createdAt, order.createdAt) <= 30;
-  });
-  const soldListingIds = unique(paidOrders.map((order) => order.listingId));
-  const paidBuyerIds = unique(paidOrders.map((order) => order.buyerId));
-  const returningBuyerIds = paidBuyerIds.filter(
-    (buyerId) => paidOrders.filter((order) => order.buyerId === buyerId).length > 1,
-  );
-  const firstSaleDurations = sellerAccounts
-    .map((seller) => {
-      const firstPaidOrder = paidOrders
-        .filter((order) => listingById(order.listingId)?.sellerId === seller.id)
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
-      return firstPaidOrder ? daysBetween(seller.createdAt, firstPaidOrder.createdAt) : null;
-    })
-    .filter((value) => value !== null);
-  const totalGmv = paidOrders.reduce((sum, order) => sum + Number(order.amount || 0), 0);
-  const pendingGmv = openOrders.reduce((sum, order) => sum + Number(order.amount || 0), 0);
-  const qualityAverage = approved.length
-    ? Math.round(approved.reduce((sum, listing) => sum + listingQualityScore(listing), 0) / approved.length)
-    : 0;
-  const saves = state.accounts.reduce((sum, account) => sum + account.savedListingIds.length, 0);
-
-  return {
-    approved: approved.length,
-    pending: pending.length,
-    rejected: rejected.length,
-    orders: state.orders.length,
-    openOrders: openOrders.length,
-    paidOrders: paidOrders.length,
-    totalGmv,
-    pendingGmv,
-    payoutDue: paidOrders.reduce((sum, order) => sum + payoutForOrder(order), 0),
-    sellThrough30: listedItems.length ? Math.round((soldWithin30.length / listedItems.length) * 100) : 0,
-    timeToFirstSale: firstSaleDurations.length
-      ? Math.round(firstSaleDurations.reduce((sum, days) => sum + days, 0) / firstSaleDurations.length)
-      : 0,
-    activeSellerRate: sellerAccounts.length ? Math.round((activeSellers.length / sellerAccounts.length) * 100) : 0,
-    listingVelocity: listedItems.length,
-    searchToBuyProxy: approved.length ? Math.round((paidOrders.length / approved.length) * 100) : 0,
-    returnBuyerRate: paidBuyerIds.length ? Math.round((returningBuyerIds.length / paidBuyerIds.length) * 100) : 0,
-    recirculatedItems: soldListingIds.length,
-    qualityAverage,
-    saves,
-    sellers: state.accounts.filter((account) => ["seller", "admin"].includes(account.role)).length,
-  };
 }
 
 function sellerMetrics(account = activeAccount()) {
@@ -934,18 +454,6 @@ function setFormEnabled(form, enabled) {
   });
 }
 
-function addEvent(type, message, entityId = "") {
-  state.auditLog.unshift({
-    id: makeId("evt"),
-    type,
-    message,
-    actorId: state.currentUserId || "",
-    entityId,
-    createdAt: new Date().toISOString(),
-  });
-  state.auditLog = state.auditLog.slice(0, 60);
-}
-
 function renderCounts() {
   renderAccountMenu();
   renderNavVisibility();
@@ -959,142 +467,6 @@ function metricCard(label, value, caption, tone = "") {
       <small>${escapeHtml(caption)}</small>
     </article>
   `;
-}
-
-function renderMarketPulse() {
-  const metrics = marketplaceMetrics();
-  const account = activeAccount();
-
-  dom.activeUserCard.innerHTML = account
-    ? `
-      <span class="${statusClass(account.role)}">${escapeHtml(account.role)}</span>
-      <strong>${escapeHtml(account.name)}</strong>
-      <small>${escapeHtml(account.city)} - ${escapeHtml(account.handle)}</small>
-    `
-    : `
-      <span class="status pending">Signed out</span>
-      <strong>No active session</strong>
-      <small>Log in to see your closet and orders.</small>
-    `;
-
-  dom.marketMetrics.innerHTML = [
-    metricCard("North Star GMV", money(metrics.totalGmv), `${metrics.paidOrders} completed checkout(s)`, "merlot"),
-    metricCard("30-Day Sell-Through", `${metrics.sellThrough30}%`, "Leading indicator for GMV", "blue"),
-    metricCard("Time to First Sale", `${metrics.timeToFirstSale || "--"}d`, "New seller liquidity", "cream"),
-    metricCard("Recirculation", metrics.recirculatedItems, "Items kept in circulation", "merlot-soft"),
-  ].join("");
-
-  renderRoleDashboard(account);
-  renderActivityFeed();
-  renderCeoQuestions();
-}
-
-function renderRoleDashboard(account) {
-  if (!account) {
-    dom.roleDashboardTitle.textContent = "Signed-out console";
-    dom.roleDashboard.innerHTML = `
-      <div class="empty-state inline">
-        <h3>No session</h3>
-        <p>Log in or create an account to get started.</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (account.role === "admin") {
-    const metrics = marketplaceMetrics();
-    dom.roleDashboardTitle.textContent = "Admin console";
-    dom.roleDashboard.innerHTML = `
-      <div class="mini-grid">
-        ${metricCard("Review queue", metrics.pending, "Listings waiting")}
-        ${metricCard("Orders", metrics.openOrders, "Active operations")}
-        ${metricCard("Payout due", money(metrics.payoutDue), "Seller payable")}
-      </div>
-      <div class="action-row">
-        <button class="button secondary" type="button" data-view-shortcut="admin">Open admin desk</button>
-        <button class="button secondary" type="button" data-view-shortcut="browse">Audit public drop</button>
-      </div>
-    `;
-    return;
-  }
-
-  if (account.role === "seller") {
-    const metrics = sellerMetrics(account);
-    dom.roleDashboardTitle.textContent = "Seller console";
-    dom.roleDashboard.innerHTML = `
-      <div class="mini-grid">
-        ${metricCard("Approved", metrics.approved, "Live pieces")}
-        ${metricCard("Pending", metrics.pending, "Under review")}
-        ${metricCard("Payout", money(metrics.payout), "After marketplace fee")}
-      </div>
-      <div class="action-row">
-        <button class="button secondary" type="button" data-view-shortcut="sell">Open seller studio</button>
-        <button class="button secondary" type="button" data-view-shortcut="browse">View drop</button>
-      </div>
-    `;
-    return;
-  }
-
-  const buyerOrders = state.orders.filter((order) => order.buyerId === account.id);
-  dom.roleDashboardTitle.textContent = "Buyer console";
-  dom.roleDashboard.innerHTML = `
-    <div class="mini-grid">
-      ${metricCard("Saved", account.savedListingIds.length, "Closet shortlist")}
-      ${metricCard("Requests", buyerOrders.length, "Checkout history")}
-      ${metricCard("City", account.city, "Delivery market")}
-    </div>
-    <div class="action-row">
-      <button class="button secondary" type="button" data-view-shortcut="browse">Browse saved pieces</button>
-      <button class="button secondary" type="button" data-set-saved-filter>Saved only</button>
-    </div>
-    ${buyerOrders.length ? `<div class="buyer-order-strip">${buyerOrders.slice(-3).map(buyerOrderPill).join("")}</div>` : ""}
-  `;
-}
-
-function buyerOrderPill(order) {
-  const listing = listingById(order.listingId);
-  return `
-    <div class="mini-record">
-      <strong>${escapeHtml(listing?.title || "Requested item")}</strong>
-      <span>${escapeHtml(order.status)} - ${escapeHtml(order.paymentStatus)}</span>
-    </div>
-  `;
-}
-
-function renderActivityFeed() {
-  dom.activityFeed.innerHTML = state.auditLog.length
-    ? state.auditLog
-        .slice(0, 8)
-        .map((event) => {
-          const actor = accountById(event.actorId);
-          return `
-            <article class="activity-item">
-              <span class="${statusClass(event.type)}">${escapeHtml(event.type)}</span>
-              <strong>${escapeHtml(event.message)}</strong>
-              <small>${escapeHtml(actor?.name || "System")} - ${escapeHtml(shortDate(event.createdAt))}</small>
-            </article>
-          `;
-        })
-        .join("")
-    : `
-      <div class="empty-state inline">
-        <h3>No activity</h3>
-        <p>Marketplace events appear here.</p>
-      </div>
-    `;
-}
-
-function renderCeoQuestions() {
-  dom.ceoQuestions.innerHTML = ceoQuestions
-    .map(
-      (question, index) => `
-        <article class="question-item">
-          <span>${index + 1}</span>
-          <strong>${escapeHtml(question)}</strong>
-        </article>
-      `,
-    )
-    .join("");
 }
 
 function renderSessionSummary() {}
@@ -1572,16 +944,15 @@ function closetCard(seller) {
         </span>
       </div>
       <div class="closet-stats">
-        <div><strong>${items.length}</strong><span>Pieces</span></div>
-        <div><strong>${followerCount(seller).toLocaleString()}</strong><span>Followers</span></div>
-        <div><strong>${seller.trustScore || 80}%</strong><span>Trust</span></div>
+        <div><strong>${items.length}</strong><span>${items.length === 1 ? "Piece" : "Pieces"}</span></div>
+        <div><strong>${soldCount(seller)}</strong><span>Sold</span></div>
+        <div><strong>${memberSince(seller)}</strong><span>Since</span></div>
       </div>
       <div class="closet-thumbs">
         ${thumbs.map((l) => `<img src="${escapeHtml(safeImage(l.image))}" alt="${escapeHtml(l.title)}" loading="lazy" />`).join("")}
       </div>
       <div class="closet-actions">
-        <button class="button primary" type="button" data-follow-seller="${escapeHtml(seller.name)}">Follow</button>
-        <button class="button secondary" type="button" data-open-closet="${escapeHtml(seller.id)}">Visit closet</button>
+        <button class="button primary" type="button" data-open-closet="${escapeHtml(seller.id)}">Visit closet</button>
       </div>
     </article>`;
 }
@@ -1591,7 +962,7 @@ function renderClosetsPage() {
   if (!panel) return;
   const sellers = state.accounts
     .filter((account) => sellerApprovedListings(account.id).length > 0)
-    .sort((a, b) => followerCount(b) - followerCount(a));
+    .sort((a, b) => closetSize(b) - closetSize(a));
 
   panel.innerHTML = `
     <div class="page-shell">
@@ -1612,7 +983,7 @@ function renderClosetsPage() {
 function renderHomeClosets() {
   const sellers = state.accounts
     .filter((account) => sellerApprovedListings(account.id).length > 0)
-    .sort((a, b) => followerCount(b) - followerCount(a))
+    .sort((a, b) => closetSize(b) - closetSize(a))
     .slice(0, 3);
   dom.homeClosets.innerHTML = sellers.length ? sellers.map(closetCard).join("") : emptyMini("No closets yet");
 }
@@ -1736,7 +1107,7 @@ function renderProductDetail(listingId) {
             <button class="button primary lg" type="button" data-request-id="${escapeHtml(listing.id)}" ${availability.locked ? "disabled" : ""}>
               ${availability.locked ? escapeHtml(availability.label) : "Buy now"}
             </button>
-            <a class="button wa-btn" href="${whatsappLink(seller, listing)}" target="_blank" rel="noopener">${icons.whatsapp} WhatsApp seller</a>
+            ${supportChatButton(listing, "Ask about this piece")}
           </div>
           <button class="button secondary" style="width:100%;justify-content:center;margin-top:.5rem" type="button" data-toggle-save="${escapeHtml(listing.id)}">
             ${icons.heart(saved)} ${saved ? "Saved to closet" : "Save to closet"}
@@ -1792,12 +1163,11 @@ function renderSellerCloset(sellerId) {
           <p>${escapeHtml(seller.handle || "@" + initials(seller.name).toLowerCase())} · ${escapeHtml(seller.city || "Pakistan")}</p>
           ${seller.bio ? `<p class="closet-bio">${escapeHtml(seller.bio)}</p>` : ""}
           <div class="closet-detail-stats">
-            <div><strong>${listings.length}</strong><span>Pieces</span></div>
-            <div><strong>${followerCount(seller).toLocaleString()}</strong><span>Followers</span></div>
-            <div><strong>${seller.trustScore || 80}%</strong><span>Trust</span></div>
+            <div><strong>${listings.length}</strong><span>${listings.length === 1 ? "Piece" : "Pieces"}</span></div>
+            <div><strong>${soldCount(seller)}</strong><span>Sold</span></div>
+            <div><strong>${memberSince(seller)}</strong><span>Since</span></div>
           </div>
         </div>
-        <button class="button primary" type="button" data-follow-seller="${escapeHtml(seller.name)}">Follow</button>
       </header>
 
       <div class="closet-detail-grid" role="list" aria-label="${escapeHtml(seller.name)}'s closet">
@@ -1926,7 +1296,7 @@ function openQuickView(listingId) {
         <span class="seller-av">${escapeHtml(initials(listing.sellerName))}</span>
         <span class="listing-seller__meta" style="flex:1">
           <strong>${escapeHtml(listing.sellerName)}${verified ? `<span class="verified-badge">${icons.verified} Verified</span>` : ""}</strong>
-          <span>${escapeHtml(seller?.city || listing.location || "Pakistan")} · ${followerCount(seller || { trustScore: 70 }).toLocaleString()} followers</span>
+          <span>${escapeHtml(seller?.city || listing.location || "Pakistan")}${seller ? ` · ${closetSize(seller)} ${closetSize(seller) === 1 ? "piece" : "pieces"}` : ""}</span>
         </span>
         <button class="button secondary sm" type="button" data-open-closet="${escapeHtml(listing.sellerId)}">Visit closet</button>
       </div>
@@ -1937,7 +1307,7 @@ function openQuickView(listingId) {
       </div>
       <div class="qv__cta">
         <button class="button primary" type="button" data-qv-buy="${escapeHtml(listing.id)}" ${availability.locked ? "disabled" : ""}>${availability.locked ? escapeHtml(availability.label) : "Buy now"}</button>
-        <a class="button wa-btn" href="${whatsappLink(seller, listing)}" target="_blank" rel="noopener">${icons.whatsapp} WhatsApp</a>
+        ${supportChatButton(listing)}
       </div>
       <button class="button secondary" style="width:100%;justify-content:center" type="button" data-toggle-save="${escapeHtml(listing.id)}">${icons.heart(saved)} ${saved ? "Saved to closet" : "Save to closet"}</button>
     </div>`;
@@ -1958,7 +1328,6 @@ function closeQuickView() {
 function renderAll() {
   renderHome();
   renderCounts();
-  renderMarketPulse();
   renderSessionSummary();
   renderPaymentSummary();
   renderAccount();
@@ -2326,12 +1695,6 @@ document.addEventListener("click", (event) => {
     } else {
       switchView("browse");
     }
-    return;
-  }
-
-  const followEl = event.target.closest("[data-follow-seller]");
-  if (followEl) {
-    showToast(`You're now following ${followEl.dataset.followSeller}.`);
     return;
   }
 

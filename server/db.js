@@ -205,13 +205,15 @@ function rowToAccount(row, { full = false, savedIds = [] } = {}) {
     bio: row.bio,
     avatar: row.avatar,
     trustScore: row.trust_score,
+    // Public on purpose: this is what the "Verified closet" badge means, so
+    // it has to travel with the seller's public profile, not just their own.
+    emailVerified: !!row.email_verified,
     savedListingIds: savedIds,
     createdAt: row.created_at,
   };
   if (full) {
     account.email = row.email;
     account.phone = row.phone;
-    account.emailVerified = !!row.email_verified;
     account.suspended = !!row.suspended;
     account.oauthProvider = row.oauth_provider || null;
   }
@@ -824,11 +826,13 @@ export function reseed() {
   try {
     db.exec("DELETE FROM saves; DELETE FROM orders; DELETE FROM events; DELETE FROM listings; DELETE FROM accounts;");
     const insAcc = db.prepare(
-      `INSERT INTO accounts (id,name,email,password_hash,role,phone,city,handle,trust_score,created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO accounts (id,name,email,password_hash,role,phone,city,handle,trust_score,email_verified,created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     );
     for (const a of SEED_ACCOUNTS) {
-      insAcc.run(a.id, a.name, a.email, hashPassword(DEMO_PASSWORD), a.role, a.phone, a.city, a.handle, a.trustScore, "2026-06-01T08:00:00.000Z");
+      // Verified so demo closets carry the same "Verified" badge a real
+      // seller earns by confirming their email.
+      insAcc.run(a.id, a.name, a.email, hashPassword(DEMO_PASSWORD), a.role, a.phone, a.city, a.handle, a.trustScore, 1, "2026-06-01T08:00:00.000Z");
     }
     const insLst = db.prepare(
       `INSERT INTO listings (id,title,brand,price,retail_price,category,size,condition,location,color,fabric,

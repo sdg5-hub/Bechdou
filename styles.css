@@ -1554,16 +1554,20 @@ body.home-active .market-shell {
   font-size: 0.82rem;
 }
 
+/* Secondary hero CTA ("Sell your fit"). This was cream text on a near
+   transparent cream fill — styling for the original dark hero, which the
+   light editorial hero replaced. On cream it rendered at roughly 1:1
+   contrast, i.e. invisible. Now an outlined merlot button. */
 .button.ghost-light {
-  color: var(--paper);
-  border-color: rgba(255, 250, 244, 0.6);
-  background: rgba(255, 250, 244, 0.08);
-  backdrop-filter: blur(6px);
+  color: var(--merlot);
+  border-color: rgba(110, 15, 31, 0.45);
+  background: var(--paper);
 }
 
 .button.ghost-light:hover {
-  color: var(--merlot);
-  background: var(--paper);
+  color: var(--paper);
+  background: var(--merlot);
+  border-color: var(--merlot);
 }
 
 .link-button {
@@ -2330,6 +2334,20 @@ body.home-active .market-shell {
   color: var(--muted);
 }
 
+/* Brand-voice variant of the quote card: a claim plus its explanation,
+   with no avatar or attribution, since nobody is being quoted. */
+.promise-card blockquote {
+  font-size: 1.24rem;
+  color: var(--merlot);
+}
+
+.promise-card figcaption {
+  display: block;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
 /* ---------- FAQ ---------- */
 .faq-list {
   display: grid;
@@ -2903,14 +2921,27 @@ button.footer-link {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Two across between roughly 720px and 1120px. These used to drop straight
+     from three columns to one at 1120px, which left tablets and small
+     laptops with a column of very wide, mostly-empty cards. */
   .collection-grid,
   .closet-row,
   .how-steps,
   .quote-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .qv {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Single column only once there genuinely is not room for two. */
+@media (max-width: 720px) {
+  .collection-grid,
+  .closet-row,
+  .how-steps,
+  .quote-grid {
     grid-template-columns: 1fr;
   }
 }
