@@ -471,13 +471,30 @@ const STATIC_PAGES = {
   contact: {
     eyebrow: "We're here",
     title: "Contact us",
-    body: `
-      <p>The fastest way to reach us is WhatsApp — message us directly and a real
-      person will reply.</p>
-      <p><a class="button primary" href="https://wa.me/923000000000" target="_blank" rel="noopener">Message us on WhatsApp</a></p>
-      <p>For anything about an existing order, include your order number
-      (found under <button class="link-inline" type="button" data-view-target="orders">My orders</button>) so we can help faster.</p>
-    `,
+    // A function so it reflects the support channels the server actually has
+    // configured, instead of hardcoding a placeholder number.
+    body: () => {
+      const channels = [
+        supportWhatsapp
+          ? `<a class="button primary" href="https://wa.me/${esc(supportWhatsapp)}" target="_blank" rel="noopener">Message us on WhatsApp</a>`
+          : "",
+        supportEmail
+          ? `<a class="button secondary" href="mailto:${esc(supportEmail)}">Email us</a>`
+          : "",
+      ].filter(Boolean).join(" ");
+
+      return `
+        <p>Message us and a real person will reply — we are a small team and we
+        read everything.</p>
+        ${channels
+          ? `<p class="contact-actions">${channels}</p>`
+          : `<p class="static-page-notice">Support channels are not configured on this
+             server yet. Set <code>BECHDOU_SUPPORT_WHATSAPP</code> and/or
+             <code>BECHDOU_SUPPORT_EMAIL</code> to show contact buttons here.</p>`}
+        <p>For anything about an existing order, include your order number
+        (found under <button class="link-inline" type="button" data-view-target="orders">My orders</button>) so we can help faster.</p>
+      `;
+    },
   },
   terms: {
     eyebrow: "Legal",
@@ -513,6 +530,7 @@ function renderStaticPage(view) {
   const page = STATIC_PAGES[view];
   const panel = document.querySelector(`[data-view-panel="${view}"]`);
   if (!page || !panel) return;
+  const body = typeof page.body === "function" ? page.body() : page.body;
   panel.innerHTML = `
     <div class="page-shell narrow static-page">
       <header class="page-head">
@@ -521,7 +539,7 @@ function renderStaticPage(view) {
           <h1>${esc(page.title)}</h1>
         </div>
       </header>
-      <div class="static-page-body">${page.body}</div>
+      <div class="static-page-body">${body}</div>
     </div>
   `;
 }

@@ -205,13 +205,15 @@ function rowToAccount(row, { full = false, savedIds = [] } = {}) {
     bio: row.bio,
     avatar: row.avatar,
     trustScore: row.trust_score,
+    // Public on purpose: this is what the "Verified closet" badge means, so
+    // it has to travel with the seller's public profile, not just their own.
+    emailVerified: !!row.email_verified,
     savedListingIds: savedIds,
     createdAt: row.created_at,
   };
   if (full) {
     account.email = row.email;
     account.phone = row.phone;
-    account.emailVerified = !!row.email_verified;
     account.suspended = !!row.suspended;
     account.oauthProvider = row.oauth_provider || null;
   }
@@ -413,7 +415,9 @@ export function createPendingSignup({ name, email, passwordHash, role, phone, ci
        expires_at=excluded.expires_at, created_at=excluded.created_at`,
   ).run(
     normalizedEmail, String(name || "").trim(), passwordHash,
-    ["buyer", "seller", "admin"].includes(role) ? role : "buyer",
+    // Self-signup can never reach "admin" — that role is only ever set by
+    // ensureAdminAccount() or a direct database change.
+    role === "seller" ? "seller" : "buyer",
     String(phone || "").trim(), String(city || "").trim() || "Pakistan",
     tokenHash, new Date(Date.now() + ttlMs).toISOString(), now,
   );
@@ -788,17 +792,47 @@ export function seedIfEmpty() {
   return true;
 }
 
+// The operator's own admin account, created from environment variables so a
+// real deployment never depends on the seeded demo login (whose password is
+// published in the README). Safe to call on every boot: it creates the
+// account once, then only ensures the role still sticks. It deliberately
+// never rewrites an existing password — use "forgot password" for that.
+export function ensureAdminAccount(email, password, name) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized || !password) return null;
+
+  const existing = getAccountRowByEmail(normalized);
+  if (existing) {
+    if (existing.role !== "admin") {
+      db.prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(existing.id);
+    }
+    return { created: false, email: normalized };
+  }
+
+  const account = createAccount({
+    name: name || "Bechdou Admin",
+    email: normalized,
+    password,
+    role: "admin",
+    emailVerified: true,
+    trustScore: 100,
+  });
+  return { created: true, email: normalized, id: account.id };
+}
+
 export function reseed() {
   // node:sqlite has no .transaction() helper — use manual BEGIN/COMMIT.
   db.exec("BEGIN");
   try {
     db.exec("DELETE FROM saves; DELETE FROM orders; DELETE FROM events; DELETE FROM listings; DELETE FROM accounts;");
     const insAcc = db.prepare(
-      `INSERT INTO accounts (id,name,email,password_hash,role,phone,city,handle,trust_score,created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO accounts (id,name,email,password_hash,role,phone,city,handle,trust_score,email_verified,created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     );
     for (const a of SEED_ACCOUNTS) {
-      insAcc.run(a.id, a.name, a.email, hashPassword(DEMO_PASSWORD), a.role, a.phone, a.city, a.handle, a.trustScore, "2026-06-01T08:00:00.000Z");
+      // Verified so demo closets carry the same "Verified" badge a real
+      // seller earns by confirming their email.
+      insAcc.run(a.id, a.name, a.email, hashPassword(DEMO_PASSWORD), a.role, a.phone, a.city, a.handle, a.trustScore, 1, "2026-06-01T08:00:00.000Z");
     }
     const insLst = db.prepare(
       `INSERT INTO listings (id,title,brand,price,retail_price,category,size,condition,location,color,fabric,

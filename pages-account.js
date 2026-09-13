@@ -64,7 +64,7 @@ function renderProfilePage() {
             <div class="profile-stats">
               <div><strong>${esc(account.role)}</strong><span>Role</span></div>
               <div><strong>${myListings.length}</strong><span>Listings</span></div>
-              <div><strong>${account.trustScore || 80}%</strong><span>Trust</span></div>
+              <div><strong>${esc(memberSince(account))}</strong><span>Member since</span></div>
             </div>
             <p class="auth-hint">${esc(account.email)}</p>
           </div>

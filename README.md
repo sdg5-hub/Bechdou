@@ -74,7 +74,13 @@ same origin, so there is nothing else to start.
 > The frontend now talks to the backend, so open it via **http://localhost:4000**
 > — not by double-clicking `index.html` (that has no API to call).
 
-### Demo accounts
+### Demo accounts — local development only
+
+> ⚠️ These exist **only** when the demo seed is on (the default in local dev).
+> They are switched off automatically as soon as you set `NODE_ENV=production`
+> or `BECHDOU_ADMIN_EMAIL`. Never run a public site with them enabled — the
+> password below is published in this file, so anyone reading the repo could
+> log in as your admin. See [Before you launch](#-before-you-launch).
 
 All seeded accounts use the password **`bechdou123`**:
 
@@ -123,20 +129,27 @@ All responses are JSON. Authenticated requests send `Authorization: Bearer <toke
 | GET    | `/api/auth/me`                  | optional  | Current account                      |
 | GET    | `/api/auth/:provider`           | —         | Start Google/Facebook sign-in (browser redirect) |
 | GET    | `/api/auth/:provider/callback`  | —         | Provider redirects here; hands off to `#oauth-callback` |
+| PATCH  | `/api/profile`                  | any user  | Update name, bio, username, phone, city, avatar |
 | POST   | `/api/profile/become-seller`    | any user  | One-click buyer → seller upgrade     |
+| GET    | `/api/sellers/:handle`          | —         | Public closet (seller + listings)    |
 | GET    | `/api/listings`                 | —         | Approved listings (filter/search)    |
 | GET    | `/api/listings/:id`             | —         | One listing (counts a view)          |
 | POST   | `/api/listings`                 | seller    | Create listing (base64 image upload) |
+| PATCH  | `/api/listings/:id`             | owner/admin | Edit a listing                     |
+| DELETE | `/api/listings/:id`             | owner/admin | Delete a listing (blocked mid-order) |
+| POST   | `/api/listings/:id/sold`        | owner/admin | Mark sold / available              |
 | POST   | `/api/listings/:id/approve`     | admin     | Approve a listing                    |
 | POST   | `/api/listings/:id/reject`      | admin     | Reject a listing                     |
 | POST   | `/api/listings/:id/save`        | any user  | Toggle save/like                     |
 | POST   | `/api/orders`                   | any user  | Checkout (JazzCash/EasyPaisa/bank + reference) |
 | GET    | `/api/orders`                   | any user  | Orders (scoped by role)              |
 | POST   | `/api/orders/:id/cancel`        | buyer     | Cancel own order before dispatch     |
+| POST   | `/api/orders/:id/ship`          | seller/admin | Mark the order shipped            |
 | POST   | `/api/orders/:id/status`        | admin     | `paid` (confirm payment) / `qc` / `dispatch` / `delivered` / `cancel` |
 | POST   | `/api/orders/:id/payout`        | admin     | Mark seller payout sent/unsent       |
 | GET    | `/api/accounts`                 | admin     | All accounts                         |
-| POST   | `/api/reset`                    | admin     | Restore seed data                    |
+| POST   | `/api/accounts/:id/suspend`     | admin     | Suspend / reinstate a user           |
+| POST   | `/api/reset`                    | admin     | Restore seed data (**demo mode only**) |
 
 ### Example
 
@@ -159,8 +172,14 @@ Environment variables (all optional):
 | Variable             | Default                | Notes                            |
 |----------------------|------------------------|----------------------------------|
 | `PORT`               | `4000`                 | HTTP port                        |
+| `NODE_ENV`           | —                      | Set to `production` on the live server — turns the demo seed off |
+| `BECHDOU_ADMIN_EMAIL` / `BECHDOU_ADMIN_PASSWORD` | — | **Your** admin account, created on first boot. Setting the email also disables the demo seed |
+| `BECHDOU_ADMIN_NAME` | `Bechdou Admin`        | Display name for that account    |
+| `BECHDOU_DEMO`       | on in dev, off in prod | `1` forces the demo seed + the "Reset demo data" button back on |
 | `BECHDOU_SECRET`     | dev secret             | **Set this in production** (signs tokens) |
 | `BECHDOU_DB`         | `server/bechdou.db`    | SQLite file path                 |
+| `BECHDOU_SUPPORT_WHATSAPP` | —                | Digits incl. country code. Blank hides the WhatsApp buttons |
+| `BECHDOU_SUPPORT_EMAIL`    | —                | Blank hides the email button on Contact |
 | `RESEND_API_KEY`     | —                      | Enables real email delivery      |
 | `BECHDOU_FROM_EMAIL` | `onboarding@resend.dev`| Sender address on outgoing email |
 | `BECHDOU_APP_URL`    | `http://localhost:4000`| Base URL used in email links     |
@@ -239,15 +258,59 @@ already exists, the two are linked instead of creating a duplicate.
 
 ---
 
+## 🚦 Before you launch
+
+Work top to bottom. The first four are the ones that actually hurt if skipped.
+
+1. **Create your own admin account.** Set `BECHDOU_ADMIN_EMAIL` and
+   `BECHDOU_ADMIN_PASSWORD` in `server/.env`. This also turns the demo seed
+   off, so the site starts empty instead of full of Aiza/Noor/Mina test data.
+2. **Set `NODE_ENV=production` and `BECHDOU_SECRET`.** Without the secret,
+   session tokens are signed with a default that is public in this repo —
+   anyone could forge a login. Generate one with:
+   `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`
+3. **Put your real payment accounts in `.env`.** `JAZZCASH_*`, `EASYPAISA_*`
+   and `BANK_*` are shown to buyers at checkout. They currently default to
+   visible placeholders (`0300-0000000`) — a buyer would send money nowhere.
+4. **Turn email on.** Set `RESEND_API_KEY` and `BECHDOU_APP_URL`. Without it,
+   signup verification and password-reset links are only printed to the server
+   console, so **nobody can finish creating an account**.
+5. **Serve over HTTPS.** Sessions are bearer tokens; on plain HTTP they are
+   readable in transit.
+6. **Set your support channels.** `BECHDOU_SUPPORT_WHATSAPP` and
+   `BECHDOU_SUPPORT_EMAIL`. Until you do, the Contact page and the "Ask about
+   this piece" buttons stay hidden rather than linking somewhere dead.
+7. Optional: add `GOOGLE_*` / `FACEBOOK_*` for social sign-in, and replace the
+   placeholder Terms and Privacy pages with real ones.
+8. **Back up `server/bechdou.db`.** It holds every account, listing and order.
+   Uploaded photos live in `server/uploads/` — back that up with it.
+
+### A note on copy
+
+The storefront deliberately makes no claim it cannot keep. There are no
+testimonials until real buyers give them, no follower counts (there is no
+following feature), and the "Verified" badge means one specific thing: the
+seller confirmed their email. If you add marketing copy, keep it to things
+the product actually does — the FAQ and Buyer Protection pages describe the
+real prepaid flow, not a cash-on-delivery one.
+
+---
+
 ## 📝 Notes & next steps
 
 - **Palette** is intentionally locked to Bechdou's brand tokens (merlot, powder
   blue, cream); the redesign only uses those colors, their gradients/opacities,
   and neutrals.
-- **Security:** prototype-grade. Tokens are bearer tokens in `localStorage`; for
-  production prefer httpOnly cookies and set `BECHDOU_SECRET`.
+- **Payments are manual by design.** There is no card gateway and no automated
+  JazzCash/EasyPaisa API — buyers transfer money themselves and an admin
+  confirms each one. That is deliberate for launch (no merchant onboarding, no
+  approval wait), but it does mean every order needs a human to confirm it.
+- **Security:** tokens are bearer tokens in `localStorage`; for a larger
+  deployment prefer httpOnly cookies. Rate limiting is in-memory, so it resets
+  on restart and is per-process.
 - **Not a static-only deploy:** the app needs the Node server for the API, so it
   won't run as a pure GitHub Pages site. Host on any Node platform (Render,
-  Railway, Fly, a VPS, etc.).
-- **Ideas:** dedicated product-detail / seller-closet routes, image compression,
-  Stripe checkout, Urdu/RTL, real PNG PWA icons.
+  Railway, Fly, a VPS, etc.) — pick one with a *persistent disk*, or SQLite and
+  the uploaded photos are wiped on every deploy.
+- **Ideas:** automated JazzCash/EasyPaisa gateway, cart + multi-item checkout,
+  seller payout history, Urdu/RTL, real PNG PWA icons.
