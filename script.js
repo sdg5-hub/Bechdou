@@ -6,53 +6,23 @@ const DEMO_PASSWORD = "bechdou123";
 const COMMISSION_RATE = 0.20;
 
 let oauthProviders = [];
+let demoMode = false;
 
+// Replaced wholesale by the server's real account details on bootstrap (see
+// applyBootstrap). These labels exist only so an order placed before the
+// bootstrap response lands still renders a sensible method name — the real
+// account numbers live in server/.env and are never hardcoded here.
 let paymentOptions = [
-  {
-    id: "stripe-checkout",
-    label: "Stripe Checkout",
-    status: "Payment core",
-    note: "Hosted Stripe payment page for buyer checkout; card data never touches Bechdou servers.",
-    disabled: false,
-  },
-  {
-    id: "stripe-shipping",
-    label: "Stripe shipping rates",
-    status: "Delivery fee",
-    note: "Checkout can collect shipping address and shipping rates; Bechdou still owns courier fulfillment.",
-    disabled: true,
-    checkout: false,
-  },
-  {
-    id: "stripe-connect",
-    label: "Stripe Connect",
-    status: "Payouts",
-    note: "Marketplace pattern for seller onboarding, application fees, and seller payouts.",
-    disabled: true,
-    checkout: false,
-  },
-  {
-    id: "manual-admin",
-    label: "Admin assisted checkout",
-    status: "Fallback",
-    note: "Temporary admin-created order route if a buyer cannot complete Stripe checkout.",
-    disabled: false,
-  },
-  {
-    id: "wallet-transfer",
-    label: "Legacy wallet transfer",
-    status: "Legacy demo",
-    note: "Kept only so older local demo orders still display correctly.",
-    disabled: true,
-    checkout: false,
-  },
+  { id: "jazzcash", label: "JazzCash" },
+  { id: "easypaisa", label: "EasyPaisa" },
+  { id: "bank-transfer", label: "Bank transfer" },
 ];
 
 const ceoQuestions = [
   "How do we raise first-30-day sell-through without lowering listing quality?",
   "What seller activation loop gets random public sellers to their first sale fastest?",
   "What checkout, QC, and delivery promise makes random buyers trust open-marketplace sellers?",
-  "What commission and Stripe Connect payout model protects Bechdou margin while sellers still feel liquid?",
+  "What commission and payout cadence protects Bechdou margin while sellers still feel liquid?",
   "Which circularity metric should sit beside GMV in every investor and brand narrative?",
 ];
 
@@ -345,6 +315,7 @@ function applyBootstrap(data) {
   if (Array.isArray(data.oauthProviders)) {
     oauthProviders = data.oauthProviders;
   }
+  demoMode = Boolean(data.demoMode);
 }
 
 async function refresh() {
@@ -359,7 +330,7 @@ async function boot() {
     showToast(error.message || "Could not reach the Bechdou server.");
   }
   renderAll();
-  // Handle hash routes (e.g. #checkout-success redirect from Stripe).
+  // Honour a deep link (#product/…, #closet/…, #verify-email?token=…).
   if (window.location.hash && window.location.hash !== "#home") {
     handleRoute();
   } else {
@@ -696,9 +667,19 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+// Whitelist of image sources we will render. "/uploads/" is where the server
+// writes seller-uploaded photos (see persistImage in server/index.js) — leaving
+// it out silently replaced every uploaded photo with the fallback collage.
+// Note the single-slash prefixes are exact, so a protocol-relative
+// "//evil.example" URL still falls through to the fallback.
 function safeImage(value) {
   const src = String(value || "");
-  if (src.startsWith("./assets/") || src.startsWith("data:image/") || /^https?:\/\//.test(src)) {
+  if (
+    src.startsWith("./assets/") ||
+    src.startsWith("/uploads/") ||
+    src.startsWith("data:image/") ||
+    /^https?:\/\//.test(src)
+  ) {
     return src;
   }
   return FALLBACK_IMAGE;
@@ -993,7 +974,7 @@ function renderMarketPulse() {
     : `
       <span class="status pending">Signed out</span>
       <strong>No active session</strong>
-      <small>Demo accounts remain available.</small>
+      <small>Log in to see your closet and orders.</small>
     `;
 
   dom.marketMetrics.innerHTML = [
@@ -1014,7 +995,7 @@ function renderRoleDashboard(account) {
     dom.roleDashboard.innerHTML = `
       <div class="empty-state inline">
         <h3>No session</h3>
-        <p>Log in with a seeded account or create a new profile.</p>
+        <p>Log in or create an account to get started.</p>
       </div>
     `;
     return;
@@ -1355,9 +1336,9 @@ function renderSellerMetrics() {
     dom.sellerMetrics.innerHTML = account
       ? `${metricCard("Seller access", "Not yet", "One click away — it's free")}`
       : `
-        ${metricCard("Seller access", "Locked", "Use a seller or admin account")}
-        ${metricCard("Demo sellers", "2", "Aiza Closet and Noor Vintage")}
-        ${metricCard("Password", DEMO_PASSWORD, "Seeded account login")}
+        ${metricCard("Listing fee", "Free", "Open a closet in one click")}
+        ${metricCard("You keep", `${100 - Math.round(COMMISSION_RATE * 100)}%`, "Sent once the sale clears")}
+        ${metricCard("Bechdou's cut", `${Math.round(COMMISSION_RATE * 100)}%`, "Covers QC, moderation, support")}
       `;
     return;
   }

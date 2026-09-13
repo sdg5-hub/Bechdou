@@ -413,7 +413,9 @@ export function createPendingSignup({ name, email, passwordHash, role, phone, ci
        expires_at=excluded.expires_at, created_at=excluded.created_at`,
   ).run(
     normalizedEmail, String(name || "").trim(), passwordHash,
-    ["buyer", "seller", "admin"].includes(role) ? role : "buyer",
+    // Self-signup can never reach "admin" — that role is only ever set by
+    // ensureAdminAccount() or a direct database change.
+    role === "seller" ? "seller" : "buyer",
     String(phone || "").trim(), String(city || "").trim() || "Pakistan",
     tokenHash, new Date(Date.now() + ttlMs).toISOString(), now,
   );
@@ -786,6 +788,34 @@ export function seedIfEmpty() {
   if (count > 0) return false;
   reseed();
   return true;
+}
+
+// The operator's own admin account, created from environment variables so a
+// real deployment never depends on the seeded demo login (whose password is
+// published in the README). Safe to call on every boot: it creates the
+// account once, then only ensures the role still sticks. It deliberately
+// never rewrites an existing password — use "forgot password" for that.
+export function ensureAdminAccount(email, password, name) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized || !password) return null;
+
+  const existing = getAccountRowByEmail(normalized);
+  if (existing) {
+    if (existing.role !== "admin") {
+      db.prepare("UPDATE accounts SET role = 'admin' WHERE id = ?").run(existing.id);
+    }
+    return { created: false, email: normalized };
+  }
+
+  const account = createAccount({
+    name: name || "Bechdou Admin",
+    email: normalized,
+    password,
+    role: "admin",
+    emailVerified: true,
+    trustScore: 100,
+  });
+  return { created: true, email: normalized, id: account.id };
 }
 
 export function reseed() {

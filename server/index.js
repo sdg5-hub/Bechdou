@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import { verifyPassword, hashPassword, signToken, verifyToken, createLinkToken, hashLinkToken } from "./auth.js";
 import {
-  seedIfEmpty, reseed,
+  seedIfEmpty, reseed, ensureAdminAccount,
   getAccountById, getAccountRowByEmail, getAccountRowById, getAccountByHandle, createAccount,
   getAccountRowByOAuth, linkOAuthIdentity, promoteToSeller,
   listAccountsFull, publicSellerProfiles,
@@ -16,7 +16,7 @@ import {
   createPendingSignup, getPendingSignupByEmail, consumePendingSignupByToken,
   listingsForViewer, approvedListings, getListingById, createListing, setListingStatus, incrementViews, toggleSave,
   updateListing, deleteListing, setListingSold,
-  createOrder, getOrderById, ordersForViewer, ordersForListing, updateOrder, updateOrderByReference, COMMISSION_RATE,
+  createOrder, getOrderById, ordersForViewer, ordersForListing, updateOrder, COMMISSION_RATE,
   markOrderShipped, setOrderPayout,
   addEvent, listEvents, marketStatus,
 } from "./db.js";
@@ -62,57 +62,54 @@ const paymentOptions = [
 const PAYMENT_METHOD_IDS = new Set(paymentOptions.map((option) => option.id));
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-seedIfEmpty();
+
+/* =====================================================================
+   FIRST-BOOT DATA
+   The seeded demo accounts share one password that is published in the
+   README, so a real deployment must never come up with them. Set
+   BECHDOU_ADMIN_EMAIL + BECHDOU_ADMIN_PASSWORD and the server creates
+   exactly one real admin and no demo content. BECHDOU_DEMO=1 forces the
+   demo seed back on (for a throwaway demo deploy).
+   ===================================================================== */
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const DEMO_DATA_ENABLED = process.env.BECHDOU_DEMO === "1" || process.env.BECHDOU_DEMO === "true"
+  ? true
+  : !IS_PRODUCTION && !process.env.BECHDOU_ADMIN_EMAIL;
+
+function bootstrapData() {
+  const adminEmail = process.env.BECHDOU_ADMIN_EMAIL;
+  const adminPassword = process.env.BECHDOU_ADMIN_PASSWORD;
+
+  if (adminEmail && adminPassword) {
+    if (String(adminPassword).length < 8) {
+      console.error("[bechdou] BECHDOU_ADMIN_PASSWORD must be at least 8 characters. Admin not created.");
+    } else {
+      const result = ensureAdminAccount(adminEmail, adminPassword, process.env.BECHDOU_ADMIN_NAME);
+      if (result?.created) console.log(`[bechdou] Admin account created for ${result.email}.`);
+    }
+  } else if (IS_PRODUCTION) {
+    console.warn(
+      "[bechdou] No BECHDOU_ADMIN_EMAIL / BECHDOU_ADMIN_PASSWORD set — this server has no admin account.\n" +
+      "          Set both and restart, or you will not be able to open the admin dashboard.",
+    );
+  }
+
+  if (DEMO_DATA_ENABLED) {
+    if (seedIfEmpty() && IS_PRODUCTION) {
+      console.warn("[bechdou] WARNING: demo data seeded on a production server (BECHDOU_DEMO is on).");
+    }
+  }
+}
+
+bootstrapData();
+
+if (IS_PRODUCTION && !process.env.BECHDOU_SECRET) {
+  console.warn("[bechdou] WARNING: BECHDOU_SECRET is not set — session tokens are signed with the dev default.");
+}
 
 const app = express();
 
-/* ---------- Stripe (lazy async init — only loads when STRIPE_SECRET_KEY is set) ---------- */
-let _stripe = null;
-async function stripe() {
-  if (_stripe) return _stripe;
-  if (!process.env.STRIPE_SECRET_KEY) return null;
-  const { default: Stripe } = await import("stripe");
-  _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-  return _stripe;
-}
-
-/* =====================================================================
-   STRIPE WEBHOOK — must be registered BEFORE express.json() so that the
-   raw body is available for signature verification.
-   ===================================================================== */
-app.post("/api/webhooks/stripe", express.raw({ type: "*/*" }), async (req, res) => {
-  const client = await stripe();
-  if (!client) return res.status(503).json({ error: "Stripe not configured." });
-
-  let event;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (webhookSecret) {
-    try {
-      event = client.webhooks.constructEvent(req.body, req.headers["stripe-signature"], webhookSecret);
-    } catch (err) {
-      return res.status(400).json({ error: `Webhook signature error: ${err.message}` });
-    }
-  } else {
-    try {
-      event = JSON.parse(req.body.toString());
-    } catch {
-      return res.status(400).json({ error: "Invalid JSON body." });
-    }
-  }
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-    const order = updateOrderByReference(session.id, {
-      status: "Payment received",
-      payment_status: "Paid",
-    });
-    if (order) addEvent("payment", `Stripe payment confirmed — session ${session.id.slice(-8)}.`, null, order.id);
-  }
-
-  res.json({ received: true });
-});
-
-/* ---------- Global JSON body parser (after webhook raw route) ---------- */
+/* ---------- Global JSON body parser ---------- */
 app.use(express.json({ limit: "12mb" }));
 
 /* ---------- Auth middleware ---------- */
@@ -235,6 +232,10 @@ async function issueVerificationEmail(accountRow) {
 // same email — there is nothing "already existing" to collide with.
 app.post("/api/auth/signup", signupLimiter, asyncRoute(async (req, res) => {
   const { name, email, password, role, phone, city } = req.body || {};
+  // Never take an admin role from the request body — public signup can only
+  // ever produce a buyer or a seller. Admins are created by the operator
+  // (BECHDOU_ADMIN_EMAIL) or promoted in the database, never self-served.
+  const requestedRole = role === "seller" ? "seller" : "buyer";
   if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password are required." });
   if (String(password).length < 8) return res.status(400).json({ error: "Password must be at least 8 characters." });
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email).trim())) {
@@ -244,7 +245,7 @@ app.post("/api/auth/signup", signupLimiter, asyncRoute(async (req, res) => {
 
   const { token, tokenHash } = createLinkToken();
   createPendingSignup(
-    { name, email, passwordHash: hashPassword(password), role, phone, city },
+    { name, email, passwordHash: hashPassword(password), role: requestedRole, phone, city },
     tokenHash,
     VERIFY_TTL_MS,
   );
@@ -279,14 +280,17 @@ function oauthRedirectUri(provider) {
   return `${appUrl()}/api/auth/${provider}/callback`;
 }
 
-app.get("/api/auth/:provider", loginLimiter, (req, res) => {
+// The :provider param is constrained to the providers we actually support —
+// an unconstrained ":provider" also matches "me" and would swallow
+// GET /api/auth/me, which is registered further down this file.
+app.get("/api/auth/:provider(google|facebook)", loginLimiter, (req, res) => {
   const provider = getProvider(req.params.provider);
   if (!provider) return res.status(404).send("That sign-in method is not configured.");
   const state = issueState();
   res.redirect(provider.authorizeUrl(oauthRedirectUri(req.params.provider), state));
 });
 
-app.get("/api/auth/:provider/callback", asyncRoute(async (req, res) => {
+app.get("/api/auth/:provider(google|facebook)/callback", asyncRoute(async (req, res) => {
   const providerId = req.params.provider;
   const provider = getProvider(providerId);
   const fail = (message) => res.redirect(`${appUrl()}/#oauth-callback?error=${encodeURIComponent(message)}`);
@@ -491,6 +495,7 @@ app.get("/api/bootstrap", asyncRoute((req, res) => {
     paymentOptions,
     commissionRate: COMMISSION_RATE,
     oauthProviders: configuredProviders(),
+    demoMode: DEMO_DATA_ENABLED,
     marketStatus: marketStatus(),
   });
 }));
@@ -646,70 +651,6 @@ app.post("/api/listings/:id/save", requireAuth, asyncRoute((req, res) => {
 }));
 
 /* =====================================================================
-   STRIPE CHECKOUT
-   ===================================================================== */
-app.post("/api/checkout/stripe", requireAuth, asyncRoute(async (req, res) => {
-  const client = await stripe();
-  if (!client) {
-    return res.status(503).json({
-      error: "Stripe is not configured on this server. Set STRIPE_SECRET_KEY and restart.",
-    });
-  }
-
-  const { listingId, buyerName, contact, deliveryCity, note } = req.body || {};
-  const listing = getListingById(listingId);
-  if (!listing) return res.status(404).json({ error: "Listing not found." });
-  if (listing.status !== "approved") return res.status(400).json({ error: "This piece is not available." });
-
-  // Default to PKR. Set STRIPE_CURRENCY=usd for testing with a US Stripe account.
-  const currency = (process.env.STRIPE_CURRENCY || "pkr").toLowerCase();
-  // Stripe amounts are in the smallest currency unit (paise for PKR, cents for USD).
-  const unitAmount = Math.round(listing.price * 100);
-
-  const origin = `${req.protocol}://${req.get("host")}`;
-  const session = await client.checkout.sessions.create({
-    mode: "payment",
-    payment_method_types: ["card"],
-    line_items: [{
-      price_data: {
-        currency,
-        product_data: {
-          name: listing.title,
-          description: listing.description || undefined,
-        },
-        unit_amount: unitAmount,
-      },
-      quantity: 1,
-    }],
-    success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/#browse`,
-    metadata: { listingId, buyerId: req.account.id },
-  });
-
-  const order = createOrder({
-    listingId,
-    buyerId: req.account.id,
-    buyerName: buyerName || req.account.name,
-    contact: contact || req.account.phone || "",
-    deliveryCity: deliveryCity || req.account.city || "",
-    note: note || "",
-    amount: listing.price,
-    paymentMethod: "stripe-checkout",
-    paymentStatus: "Awaiting Stripe",
-    paymentReference: session.id,
-    status: "Requested",
-  });
-
-  addEvent("order", `Stripe checkout started for ${listing.title}.`, req.account.id, order.id);
-  res.json({ url: session.url, orderId: order.id });
-}));
-
-/* Stripe-hosted checkout success redirect — bring the buyer back into the SPA. */
-app.get("/checkout/success", (_req, res) => {
-  res.redirect("/#checkout-success");
-});
-
-/* =====================================================================
    ORDERS
    ===================================================================== */
 app.post("/api/orders", requireAuth, asyncRoute((req, res) => {
@@ -847,8 +788,15 @@ app.post("/api/accounts/:id/suspend", requireRole("admin"), asyncRoute((req, res
   res.json({ account });
 }));
 
+// Destroys every account, listing and order. Only ever available on a demo
+// server — on a real deployment this is the single most dangerous button in
+// the product, so it is refused outright rather than guarded by a confirm().
 app.post("/api/reset", requireRole("admin"), asyncRoute((req, res) => {
+  if (!DEMO_DATA_ENABLED) {
+    return res.status(403).json({ error: "Demo reset is disabled on this server." });
+  }
   reseed();
+  addEvent("account", "Demo data was reset.", req.account.id, req.account.id);
   res.json({ ok: true });
 }));
 

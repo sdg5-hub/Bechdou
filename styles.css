@@ -4415,9 +4415,16 @@ button.footer-link {
 }
 
 /* Payout breakdown — the three numbers that matter for reconciling a sale */
-.payout-row {
+/* A payout row has five children (avatar, main, breakdown, side, actions) but
+   the base .admin-row grid only declares four columns, which pushed the
+   "Mark … sent" button onto an implicit second row inside the 46px avatar
+   column. Declare the fifth column here. (.admin-row is a grid, so the
+   flex-* properties this rule used to carry never applied.) */
+/* Specificity note: the base rule is `.admin-row.is-compact` (two classes),
+   so this selector must also carry at least two to win. */
+.admin-row.is-compact.payout-row {
+  grid-template-columns: 46px minmax(0, 1fr) auto auto auto;
   align-items: center;
-  flex-wrap: wrap;
 }
 
 .payout-breakdown {
@@ -4458,7 +4465,17 @@ button.footer-link {
 }
 
 @media (max-width: 720px) {
-  .payout-row { flex-direction: column; align-items: stretch; }
+  /* Stack into a single column so the breakdown and the payout button each
+     get the full width instead of being squeezed into auto columns. */
+  .admin-row.is-compact.payout-row {
+    grid-template-columns: 46px minmax(0, 1fr);
+    align-items: start;
+  }
+  .payout-row .payout-breakdown,
+  .payout-row .admin-row__side,
+  .payout-row .admin-row__actions {
+    grid-column: 1 / -1;
+  }
   .payout-breakdown { justify-content: space-between; }
 }
 

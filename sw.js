@@ -1,17 +1,17 @@
 /* Bechdou service worker — app-shell caching + graceful offline fallback. */
-const CACHE = "bechdou-v29";
+const CACHE = "bechdou-v31";
 const SHELL = [
   "./",
   "./index.html",
   "./offline.html",
-  "./styles.css?v=29",
-  "./api.js?v=29",
-  "./pages.js?v=29",
-  "./pages-account.js?v=29",
-  "./admin.js?v=29",
-  "./script.js?v=29",
-  "./seller.js?v=29",
-  "./wire.js?v=29",
+  "./styles.css?v=31",
+  "./api.js?v=31",
+  "./pages.js?v=31",
+  "./pages-account.js?v=31",
+  "./admin.js?v=31",
+  "./script.js?v=31",
+  "./seller.js?v=31",
+  "./wire.js?v=31",
   "./manifest.webmanifest",
   "./assets/icon.svg",
 ];
@@ -41,7 +41,7 @@ self.addEventListener("fetch", (event) => {
   // Skip cross-origin requests and API calls (always network-only).
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/checkout/")) return;
+  if (url.pathname.startsWith("/api/")) return;
 
   // Network-first for page navigations — fresh HTML on every load.
   // Fall back to offline.html if the network is unreachable.

@@ -39,7 +39,7 @@ function renderAdmin() {
           <p class="eyebrow">Operations</p>
           <h1>Admin dashboard</h1>
         </div>
-        <button class="button secondary sm" type="button" id="admin-reset">Reset demo data</button>
+        ${demoMode ? `<button class="button secondary sm" type="button" id="admin-reset">Reset demo data</button>` : ""}
       </header>
 
       <div class="admin-metrics">

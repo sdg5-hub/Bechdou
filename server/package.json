@@ -12,7 +12,6 @@
     "dev": "node --experimental-sqlite --env-file-if-exists=.env --watch index.js"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "stripe": "^16.0.0"
+    "express": "^4.21.2"
   }
 }
