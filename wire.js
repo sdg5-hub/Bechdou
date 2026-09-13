@@ -85,6 +85,38 @@ document.addEventListener("click", async (event) => {
     window.location.hash = `#closet/${encodeURIComponent(closetButton.dataset.openCloset)}`;
     return;
   }
+
+  // Nav entries that point at a section of the home page (e.g. FAQ) rather
+  // than a view of their own.
+  // Nav entries that point at a section of the home page (e.g. FAQ).
+  const sectionJump = event.target.closest("[data-section-jump]");
+  if (sectionJump) {
+    const target = () => document.getElementById(sectionJump.dataset.sectionJump);
+    const alreadyHome = document
+      .querySelector('[data-view-panel="home"]')
+      ?.classList.contains("is-active");
+
+    if (alreadyHome) {
+      // Scroll straight there — calling switchView would fire its own smooth
+      // scroll to the top and fight this one.
+      target()?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    switchView("home");
+    // Coming from another view, let switchView's scroll-to-top settle first.
+    setTimeout(() => target()?.scrollIntoView({ behavior: "smooth", block: "start" }), 360);
+    return;
+  }
+
+  // Search icon in the topbar: open Browse and put the cursor in the field.
+  // switchView kicks off a smooth scroll, so focus is deferred past it —
+  // focusing mid-scroll gets dropped.
+  if (event.target.closest("[data-search-jump]")) {
+    switchView("browse");
+    setTimeout(() => dom.searchInput?.focus(), 320);
+    return;
+  }
 });
 
 /* ---------- Post-login redirects ---------- */

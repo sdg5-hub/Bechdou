@@ -609,12 +609,12 @@ function listingCard(listing) {
         </div>
       </div>
       <div class="listing-body">
+        <span class="listing-brandline">${escapeHtml(listing.brand)}</span>
         <div class="listing-title-row">
           <h3><a class="listing-title-link" href="#product/${id}">${escapeHtml(listing.title)}</a></h3>
           <span class="price">${escapeHtml(money(listing.price))}</span>
         </div>
         <p class="listing-meta">
-          <span>${escapeHtml(listing.brand)}</span>
           <span>${escapeHtml(listing.size || "One size")}</span>
           <span>${escapeHtml(listing.condition)}</span>
         </p>
@@ -857,6 +857,7 @@ let homeReady = false;
 
 function renderHome() {
   renderHeroStats();
+  renderFeaturedBand();
   renderHomeCategories();
   renderHomeCollections();
   renderHomeClosets();
@@ -892,21 +893,67 @@ function renderHeroStats() {
   dom.heroStatCities.textContent = unique(approved.map((listing) => listing.location)).length;
 }
 
+// "Featured closet of the month" — the closet with the most live pieces.
+// Hidden entirely until a real closet qualifies, so a brand-new site never
+// shows an empty band.
+function renderFeaturedBand() {
+  const band = document.getElementById("featured-band");
+  if (!band) return;
+
+  const seller = state.accounts
+    .filter((account) => sellerApprovedListings(account.id).length > 0)
+    .sort((a, b) => closetSize(b) - closetSize(a))[0];
+
+  if (!seller) {
+    band.innerHTML = "";
+    return;
+  }
+
+  const pieces = sellerApprovedListings(seller.id);
+  const firstName = String(seller.name || "").trim().split(/\s+/)[0] || seller.name;
+
+  band.innerHTML = `
+    <div class="featured-band__media">
+      <img src="${escapeHtml(safeImage(pieces[0]?.image))}" alt="${escapeHtml(seller.name)}'s closet" loading="lazy" decoding="async" />
+    </div>
+    <div>
+      <p class="featured-band__eyebrow">Featured closet</p>
+      <h2>${escapeHtml(firstName)}'s Edit</h2>
+      <p class="script-label">Timeless pieces. Thoughtfully chosen.</p>
+      <button class="button primary caps" type="button" data-open-closet="${escapeHtml(seller.id)}">
+        Shop this closet →
+      </button>
+    </div>
+    <div class="featured-seal" aria-hidden="true">
+      <div>
+        <span>B</span>
+        <small>Curated closets<br />Real people</small>
+      </div>
+    </div>
+  `;
+}
+
 function renderHomeCategories() {
   const approved = state.listings.filter((listing) => listing.status === "approved");
   const cats = [
-    ["Tops", "Everyday & evening"],
-    ["Outerwear", "Layers & coats"],
-    ["Shoes", "Flats to heels"],
-    ["Accessories", "Bags & extras"],
+    ["Tops", "Everyday staples you'll love"],
+    ["Outerwear", "Layer up in style"],
+    ["Shoes", "Step into something new"],
+    ["Accessories", "The finishing touch"],
+    ["Bags", "Carry what defines you"],
   ];
   dom.homeCategories.innerHTML = cats
     .map(([name, desc]) => {
-      const count = approved.filter((listing) => listing.category === name).length;
+      const inCat = approved.filter((listing) => listing.category === name);
+      // Show a real piece from the category where there is one, otherwise
+      // fall back to any live listing so the tile never renders bare.
+      const art = inCat[0]?.image || approved[0]?.image;
       return `
         <button class="category-tile" type="button" data-category-jump="${escapeHtml(name)}">
+          <img src="${escapeHtml(safeImage(art))}" alt="" loading="lazy" decoding="async" />
           <strong>${escapeHtml(name)}</strong>
-          <span>${count} piece${count === 1 ? "" : "s"} · ${escapeHtml(desc)}</span>
+          <span>${escapeHtml(desc)}</span>
+          <span class="cat-arrow" aria-hidden="true">→</span>
         </button>`;
     })
     .join("");

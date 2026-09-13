@@ -4545,3 +4545,499 @@ button.footer-link {
   font-size: 0.88rem;
   font-style: italic;
 }
+
+/* =====================================================================
+   EDITORIAL REDESIGN  (matches the Bechdou brand mockups)
+   Appended last so these rules win over the earlier component styles
+   without having to edit them in place.
+   ===================================================================== */
+
+/* ---------- Announcement bar ---------- */
+.announce-bar {
+  margin: 0 0 12px;
+  padding: 9px 16px;
+  text-align: center;
+  background: var(--powder);
+  border-radius: var(--radius);
+}
+
+.announce-bar p {
+  margin: 0;
+  color: var(--merlot);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Topbar ---------- */
+.topbar {
+  top: 0;
+  border-radius: var(--radius);
+}
+
+.brand strong {
+  display: block;
+  color: var(--merlot);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: 1.62rem;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.brand-script {
+  display: block;
+  margin-top: 3px;
+  color: var(--merlot-soft);
+  font-family: "Pinion Script", "Cormorant Garamond", cursive, serif;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-transform: none;
+}
+
+.topnav {
+  justify-content: center;
+  gap: 4px;
+}
+
+.topnav .nav-button {
+  padding: 8px 13px;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.topnav .nav-button.is-active {
+  color: var(--paper);
+  background: var(--merlot);
+}
+
+.top-actions {
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--merlot);
+  background: transparent;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.icon-button:hover {
+  background: rgba(110, 15, 31, 0.09);
+}
+
+/* ---------- Hero ---------- */
+.hero-title {
+  max-width: none;
+  font-size: clamp(2.9rem, 6vw, 5.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+}
+
+.hero-title__line {
+  display: block;
+  color: var(--merlot);
+}
+
+.hero-title__line.is-powder {
+  color: var(--powder-deep);
+}
+
+.hero-script {
+  margin: 12px 0 0;
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  color: var(--merlot-soft);
+}
+
+.hero-sub {
+  margin-top: 16px;
+}
+
+.button.caps {
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* ---------- Featured closet band ---------- */
+.featured-band {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) auto;
+  align-items: center;
+  gap: clamp(20px, 3vw, 44px);
+  margin: clamp(26px, 4vw, 44px) 0;
+  padding: clamp(22px, 3vw, 38px);
+  border-radius: var(--radius);
+  background: var(--powder);
+}
+
+.featured-band:empty {
+  display: none;
+}
+
+.featured-band__media {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+.featured-band__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.featured-band__eyebrow {
+  margin: 0 0 6px;
+  color: var(--merlot);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.featured-band h2 {
+  font-size: clamp(2.1rem, 3.6vw, 3.3rem);
+  line-height: 1.02;
+  color: var(--merlot);
+}
+
+.featured-band .script-label {
+  margin: 8px 0 18px;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  color: var(--merlot-soft);
+}
+
+/* Circular "curated closets · real people" seal, as in the mockups. */
+.featured-seal {
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  border: 1px solid rgba(110, 15, 31, 0.4);
+  color: var(--merlot);
+}
+
+.featured-seal span {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.featured-seal small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--merlot-soft);
+}
+
+/* ---------- Trust strip: five across, icon beside label ---------- */
+.trust-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: clamp(20px, 3vw, 34px) 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.trust-strip .trust-pill {
+  justify-content: center;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.trust-strip .trust-pill + .trust-pill {
+  border-left: 1px solid var(--line);
+}
+
+.trust-strip .trust-pill strong {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.trust-strip .trust-pill span {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+/* ---------- Category tiles with imagery ---------- */
+.category-tiles {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.category-tile {
+  min-height: 232px;
+  padding: 18px;
+  background: var(--merlot);
+}
+
+/* The artwork is taken out of grid flow so only the label, description and
+   arrow form rows; without this the <img> claims a row of its own and pushes
+   the caption into the middle of the tile. */
+.category-tile img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 500ms ease;
+}
+
+.category-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(to top, rgba(28, 18, 20, 0.92) 12%, rgba(28, 18, 20, 0.55) 46%, rgba(28, 18, 20, 0.18) 100%);
+}
+
+/* Deliberately not `> *` — that would reset the artwork to position:relative
+   and put it back in the grid. */
+.category-tile > strong,
+.category-tile > span {
+  position: relative;
+  z-index: 1;
+}
+
+.category-tile:hover img {
+  transform: scale(1.05);
+}
+
+.category-tile strong {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.7rem;
+  font-weight: 600;
+  line-height: 1.1;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
+}
+
+.category-tile span {
+  font-size: 0.84rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 0.95;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+
+.category-tile .cat-arrow {
+  margin-top: 6px;
+  font-size: 1.05rem;
+  opacity: 1;
+}
+
+/* ---------- Product cards: brand above name, editorial meta ---------- */
+.listing-card .listing-brandline {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.listing-card .listing-body h3 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: 1.16rem;
+  line-height: 1.2;
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 2.2fr);
+  margin-top: clamp(40px, 6vw, 72px);
+  padding: clamp(30px, 4vw, 48px);
+  border-top: 0;
+  border-radius: var(--radius);
+  color: var(--paper);
+  background: var(--merlot);
+}
+
+.site-footer h3,
+.site-footer strong {
+  color: var(--paper);
+}
+
+.site-footer .script-label {
+  color: rgba(255, 250, 244, 0.86);
+}
+
+.site-footer__brand p:not(.script-label) {
+  color: rgba(255, 250, 244, 0.74);
+}
+
+.site-footer button,
+.site-footer a {
+  color: rgba(255, 250, 244, 0.82);
+}
+
+.site-footer button:hover,
+.site-footer a:hover {
+  color: var(--paper);
+}
+
+.site-footer .footer-social a,
+.site-footer .footer-social button {
+  border-color: rgba(255, 250, 244, 0.34);
+}
+
+@media (max-width: 1120px) {
+  .featured-band {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .featured-seal { display: none; }
+  .trust-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .trust-strip .trust-pill:nth-child(3n + 1) { border-left: 0; }
+  .category-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1000px) {
+  /* The sticky bottom bar already covers navigation on small screens, and an
+     eight-item strip cannot fit up here. `!important` is required to beat an
+     earlier mobile rule that forces `display: flex !important` on .topnav. */
+  .topnav {
+    display: none !important;
+  }
+
+  /* Brand on the left, actions on the right — one tidy row, instead of the
+     stacked single column the wider layout falls back to. */
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  /* An earlier ≤480px rule makes this a two-column grid with fixed tracks,
+     which forced the actions to 320px and collapsed the brand's own column
+     to 0 — the brand text then overflowed on top of the buttons. */
+  .topbar .top-actions {
+    display: flex !important;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  /* The base .home-hero rule is declared *after* the ≤1120px block that is
+     meant to collapse it, so it kept winning and the hero stayed in two
+     columns right down to 375px. Re-stated here, last, with the copy first. */
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .home-hero__media {
+    order: 0;
+    aspect-ratio: 4 / 3;
+  }
+
+  .hero-title {
+    font-size: clamp(2.4rem, 12vw, 3.4rem);
+  }
+
+  .hero-script {
+    font-size: clamp(1.25rem, 6vw, 1.7rem);
+  }
+
+  .hero-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* An earlier ≤480px rule stretches these to full width, which turned
+     "Sign In" into a two-line block. */
+  .topbar .plain-button,
+  .topbar .auth-actions .button {
+    width: auto !important;
+    white-space: nowrap;
+  }
+
+  .brand strong {
+    font-size: 1.24rem;
+    letter-spacing: 0.1em;
+  }
+
+  .brand-script {
+    font-size: 0.86rem;
+  }
+
+  /* Search and Saved both have a home in the sticky bottom bar (Browse and
+     Account), so the topbar icons are redundant here — and dropping them is
+     what leaves enough width for the wordmark beside the auth buttons. */
+  .topbar .icon-button {
+    display: none;
+  }
+
+  .auth-actions .button.sm,
+  .topbar .plain-button {
+    padding: 8px 11px;
+    font-size: 0.79rem;
+  }
+}
+
+/* Below this the tagline is what pushes the wordmark into the buttons.
+   Selector has to out-rank `.brand strong, .brand small { display: block }`
+   declared earlier — media queries add no specificity of their own. */
+@media (max-width: 560px) {
+  .brand small.brand-script {
+    display: none;
+  }
+
+  .brand strong {
+    font-size: 1.12rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (max-width: 720px) {
+  .featured-band { grid-template-columns: 1fr; }
+  .trust-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 0; }
+  .trust-strip .trust-pill { border-left: 0 !important; justify-content: flex-start; }
+  .category-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-footer { grid-template-columns: 1fr; }
+  .announce-bar p { font-size: 0.72rem; }
+
+  /* Keep the caption inside its tile — without min-width:0 the grid item
+     refuses to shrink below its content and spills a couple of pixels. */
+  .category-tile {
+    min-width: 0;
+    padding: 14px;
+    min-height: 190px;
+  }
+
+  .category-tile > strong,
+  .category-tile > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .category-tile strong { font-size: 1.35rem; }
+}
