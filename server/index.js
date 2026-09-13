@@ -35,12 +35,16 @@ const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
 // transaction reference below; the seller is paid out separately by the
 // admin once the order is confirmed. Real account details belong in
 // server/.env — the values here are visible placeholders, not real numbers.
-const paymentOptions = [
+// A method is offered only when its account number is actually configured —
+// so leaving EASYPAISA_ACCOUNT_NUMBER blank removes EasyPaisa from checkout
+// entirely rather than showing buyers an account that does not exist.
+const ALL_PAYMENT_OPTIONS = [
   {
     id: "jazzcash",
     label: "JazzCash",
     accountTitle: process.env.JAZZCASH_ACCOUNT_TITLE || "Bechdou Marketplace",
     accountNumber: process.env.JAZZCASH_ACCOUNT_NUMBER || "0300-0000000",
+    configured: Boolean(process.env.JAZZCASH_ACCOUNT_NUMBER),
     note: "Send the full amount to this JazzCash number, then enter the transaction ID below.",
   },
   {
@@ -48,6 +52,7 @@ const paymentOptions = [
     label: "EasyPaisa",
     accountTitle: process.env.EASYPAISA_ACCOUNT_TITLE || "Bechdou Marketplace",
     accountNumber: process.env.EASYPAISA_ACCOUNT_NUMBER || "0300-0000000",
+    configured: Boolean(process.env.EASYPAISA_ACCOUNT_NUMBER),
     note: "Send the full amount to this EasyPaisa number, then enter the transaction ID below.",
   },
   {
@@ -56,10 +61,25 @@ const paymentOptions = [
     accountTitle: process.env.BANK_ACCOUNT_TITLE || "Bechdou Marketplace",
     accountNumber: process.env.BANK_ACCOUNT_NUMBER || "PK00 BANK 0000 0000 0000 0000",
     bankName: process.env.BANK_NAME || "Bank name",
+    configured: Boolean(process.env.BANK_ACCOUNT_NUMBER),
     note: "Transfer the full amount to this account, then enter the reference number below.",
   },
 ];
+
+const configuredPayments = ALL_PAYMENT_OPTIONS.filter((option) => option.configured);
+// With nothing configured (fresh clone, local dev) fall back to the full
+// placeholder set so checkout is still explorable.
+const paymentOptions = (configuredPayments.length ? configuredPayments : ALL_PAYMENT_OPTIONS)
+  .map(({ configured, ...option }) => option);
+
 const PAYMENT_METHOD_IDS = new Set(paymentOptions.map((option) => option.id));
+
+if (!configuredPayments.length) {
+  console.warn(
+    "[bechdou] No payment accounts configured — checkout is showing placeholder\n" +
+    "          numbers. Set JAZZCASH_/EASYPAISA_/BANK_ACCOUNT_NUMBER before taking real orders.",
+  );
+}
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
