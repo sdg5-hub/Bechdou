@@ -41,7 +41,7 @@ function openListingEditor(listing) {
         </label>
         <label>Category
           <select name="category">
-            ${["Tops", "Outerwear", "Shoes", "Accessories"].map((c) => `
+            ${["Tops", "Dresses", "Denim", "Outerwear", "Bags", "Shoes", "Accessories"].map((c) => `
               <option value="${esc(c)}" ${c === listing.category ? "selected" : ""}>${esc(c)}</option>
             `).join("")}
           </select>

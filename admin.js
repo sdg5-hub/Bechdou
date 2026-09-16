@@ -50,6 +50,7 @@ function renderAdmin() {
         ${adminMetricCard("Bechdou's cut", money(metrics.commissionEarned), `${Math.round(COMMISSION_RATE * 100)}% commission earned`)}
         ${adminMetricCard("Owed to sellers", money(metrics.owed), "still to send out")}
         ${adminMetricCard("Users", metrics.users, `${metrics.suspended} suspended`)}
+        ${adminMetricCard("Newsletter", state.newsletterSubscribers, "email subscribers")}
       </div>
 
       <nav class="admin-tabs" role="tablist">

@@ -180,6 +180,8 @@ Environment variables (all optional):
 | `BECHDOU_DB`         | `server/bechdou.db`    | SQLite file path                 |
 | `BECHDOU_SUPPORT_WHATSAPP` | —                | Digits incl. country code. Blank hides the WhatsApp buttons |
 | `BECHDOU_SUPPORT_EMAIL`    | —                | Blank hides the email button on Contact |
+| `BECHDOU_TRUST_PROXY`      | —                | Set to `1` behind a load balancer, or rate limits apply site-wide |
+| `BECHDOU_UPLOADS_DIR`      | `server/uploads` | Put on the persistent disk in production |
 | `RESEND_API_KEY`     | —                      | Enables real email delivery      |
 | `BECHDOU_FROM_EMAIL` | `onboarding@resend.dev`| Sender address on outgoing email |
 | `BECHDOU_APP_URL`    | `http://localhost:4000`| Base URL used in email links     |

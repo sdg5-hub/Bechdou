@@ -19,13 +19,19 @@ import {
   createOrder, getOrderById, ordersForViewer, ordersForListing, updateOrder, COMMISSION_RATE,
   markOrderShipped, setOrderPayout,
   addEvent, listEvents, marketStatus,
+  subscribeToNewsletter, newsletterSubscriberCount,
 } from "./db.js";
 import { sendVerificationEmail, sendPasswordResetEmail, appUrl } from "./email.js";
 import { configuredProviders, getProvider, issueState, consumeState } from "./oauth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, "..");
-const UPLOADS_DIR = path.join(__dirname, "uploads");
+// Seller photos must live on the host's persistent disk, not inside the
+// deployed code — otherwise every redeploy wipes them. Point this and
+// BECHDOU_DB at the same mounted volume in production.
+const UPLOADS_DIR = process.env.BECHDOU_UPLOADS_DIR
+  ? path.resolve(process.env.BECHDOU_UPLOADS_DIR)
+  : path.join(__dirname, "uploads");
 const PORT = process.env.PORT || 4000;
 
 const FALLBACK_IMAGE = "./assets/bechdou-editorial-collage.png";
@@ -128,6 +134,26 @@ if (IS_PRODUCTION && !process.env.BECHDOU_SECRET) {
 }
 
 const app = express();
+
+/* ---------- Proxy awareness ----------
+   Behind a platform load balancer (Render, Railway, Fly, nginx) every request
+   arrives from the proxy, so req.ip is the proxy's address — and the per-IP
+   rate limits below would then apply to the whole site at once: ten failed
+   logins from any one visitor would lock every user out for fifteen minutes.
+   Set BECHDOU_TRUST_PROXY=1 on those platforms (1 = one proxy in front).
+   Leave it unset locally: trusting X-Forwarded-For when nothing sets it lets
+   a client spoof its own address and walk straight past the limiter. */
+const TRUST_PROXY = process.env.BECHDOU_TRUST_PROXY;
+if (TRUST_PROXY) {
+  app.set("trust proxy", /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
+  console.log(`[bechdou] Trusting ${TRUST_PROXY} proxy hop(s) for client IPs.`);
+} else if (IS_PRODUCTION) {
+  console.warn(
+    "[bechdou] BECHDOU_TRUST_PROXY is not set. If this server sits behind a\n" +
+    "          load balancer, rate limits will apply site-wide instead of per\n" +
+    "          visitor — set it to 1 on Render/Railway/Fly.",
+  );
+}
 
 /* ---------- Global JSON body parser ---------- */
 app.use(express.json({ limit: "12mb" }));
@@ -238,6 +264,11 @@ const emailLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
   message: "Too many email requests. Please wait before requesting another.",
+});
+const newsletterLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 8,
+  message: "Too many attempts. Please try again later.",
 });
 
 // Legacy path — resends against an already-created (pre-this-change) account.
@@ -520,8 +551,24 @@ app.get("/api/bootstrap", asyncRoute((req, res) => {
     // WhatsApp buttons rather than linking to a number nobody answers.
     supportWhatsapp: String(process.env.BECHDOU_SUPPORT_WHATSAPP || "").replace(/[^\d]/g, ""),
     supportEmail: process.env.BECHDOU_SUPPORT_EMAIL || "",
+    // No "@" — the frontend builds both the display label and the profile
+    // URL from this. Empty hides the "Follow" section entirely.
+    instagramHandle: String(process.env.BECHDOU_INSTAGRAM_HANDLE || "").replace(/^@/, ""),
+    newsletterSubscribers: newsletterSubscriberCount(),
     marketStatus: marketStatus(),
   });
+}));
+
+/* =====================================================================
+   NEWSLETTER
+   ===================================================================== */
+app.post("/api/newsletter", newsletterLimiter, asyncRoute((req, res) => {
+  const email = String(req.body?.email || "").trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return res.status(400).json({ error: "Enter a valid email address." });
+  }
+  const { added } = subscribeToNewsletter(email);
+  res.json({ subscribed: true, alreadySubscribed: !added });
 }));
 
 /* =====================================================================

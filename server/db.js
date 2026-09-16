@@ -117,6 +117,11 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_pending_signups_token ON pending_signups (token_hash);
+
+  CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+    email TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL
+  );
 `);
 
 /* ---------- Migrations (additive columns for pre-existing databases) ---------- */
@@ -738,6 +743,21 @@ export function addEvent(type, message, actorId = "", entityId = "") {
 
 export function listEvents(limit = 40) {
   return db.prepare("SELECT * FROM events ORDER BY created_at DESC LIMIT ?").all(limit).map(rowToEvent);
+}
+
+/* ---------- Newsletter ---------- */
+// Returns whether this email was newly added, so the route can tell a first-
+// time subscriber apart from someone who signs up twice.
+export function subscribeToNewsletter(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  const result = db
+    .prepare("INSERT OR IGNORE INTO newsletter_subscribers (email, created_at) VALUES (?, ?)")
+    .run(normalized, new Date().toISOString());
+  return { added: result.changes > 0 };
+}
+
+export function newsletterSubscriberCount() {
+  return db.prepare("SELECT COUNT(*) AS n FROM newsletter_subscribers").get().n;
 }
 
 /* ---------- Market status (public availability) ---------- */

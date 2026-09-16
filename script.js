@@ -10,6 +10,7 @@ let demoMode = false;
 // a placeholder number.
 let supportWhatsapp = "";
 let supportEmail = "";
+let instagramHandle = "";
 
 // Replaced wholesale by the server's real account details on bootstrap (see
 // applyBootstrap). These labels exist only so an order placed before the
@@ -31,6 +32,7 @@ let state = {
   selectedListingId: "",
   account: null,
   marketStatus: { reserved: [], sold: [] },
+  newsletterSubscribers: 0,
 };
 
 function applyBootstrap(data) {
@@ -43,6 +45,7 @@ function applyBootstrap(data) {
     selectedListingId: state.selectedListingId || "",
     account: data.account || null,
     marketStatus: data.marketStatus || { reserved: [], sold: [] },
+    newsletterSubscribers: data.newsletterSubscribers || 0,
   };
   if (Array.isArray(data.paymentOptions) && data.paymentOptions.length) {
     paymentOptions = data.paymentOptions;
@@ -53,6 +56,7 @@ function applyBootstrap(data) {
   demoMode = Boolean(data.demoMode);
   supportWhatsapp = String(data.supportWhatsapp || "");
   supportEmail = String(data.supportEmail || "");
+  instagramHandle = String(data.instagramHandle || "").replace(/^@/, "");
 }
 
 async function refresh() {
@@ -133,11 +137,7 @@ const dom = {
   heroStatCities: document.getElementById("hero-stat-cities"),
   heroInstall: document.getElementById("hero-install"),
   homeTrending: document.getElementById("home-trending"),
-  homeStaff: document.getElementById("home-staff"),
   homeCategories: document.getElementById("home-categories"),
-  homeCollections: document.getElementById("home-collections"),
-  homeClosets: document.getElementById("home-closets"),
-  homeOutfits: document.getElementById("home-outfits"),
   installBanner: document.getElementById("install-banner"),
   installAccept: document.getElementById("install-accept"),
   installDismiss: document.getElementById("install-dismiss"),
@@ -859,13 +859,11 @@ function renderHome() {
   renderHeroStats();
   renderFeaturedBand();
   renderHomeCategories();
-  renderHomeCollections();
-  renderHomeClosets();
-  renderHomeOutfits();
+  renderFooterSocial();
+  renderInstagramSection();
 
   if (!homeReady) {
     dom.homeTrending.innerHTML = skeletonCards(4);
-    dom.homeStaff.innerHTML = skeletonCards(4);
     setTimeout(() => {
       homeReady = true;
       fillHomeCarousels();
@@ -878,12 +876,9 @@ function renderHome() {
 function fillHomeCarousels() {
   const approved = state.listings.filter((listing) => listing.status === "approved");
   const trending = [...approved].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8);
-  const staff = [...approved].sort((a, b) => discountOf(b) - discountOf(a)).slice(0, 8);
 
   dom.homeTrending.innerHTML = trending.length ? trending.map(listingCard).join("") : emptyMini("No drops yet");
-  dom.homeStaff.innerHTML = staff.length ? staff.map(listingCard).join("") : emptyMini("Nothing below retail yet");
   dom.homeTrending.setAttribute("aria-busy", "false");
-  dom.homeStaff.setAttribute("aria-busy", "false");
 }
 
 function renderHeroStats() {
@@ -933,48 +928,28 @@ function renderFeaturedBand() {
   `;
 }
 
+// Curated editorial set for the homepage row — deliberately not every
+// category in the system (Outerwear stays selectable everywhere else), so
+// this can match a fixed, designed layout instead of growing unbounded as
+// sellers add categories.
+const HOME_CATEGORY_ORDER = ["Tops", "Dresses", "Denim", "Bags", "Shoes", "Accessories"];
+
 function renderHomeCategories() {
   const approved = state.listings.filter((listing) => listing.status === "approved");
-  const cats = [
-    ["Tops", "Everyday staples you'll love"],
-    ["Outerwear", "Layer up in style"],
-    ["Shoes", "Step into something new"],
-    ["Accessories", "The finishing touch"],
-    ["Bags", "Carry what defines you"],
-  ];
-  dom.homeCategories.innerHTML = cats
-    .map(([name, desc]) => {
+  dom.homeCategories.innerHTML = HOME_CATEGORY_ORDER
+    .map((name) => {
       const inCat = approved.filter((listing) => listing.category === name);
       // Show a real piece from the category where there is one, otherwise
-      // fall back to any live listing so the tile never renders bare.
+      // fall back to any live listing so the circle never renders bare.
       const art = inCat[0]?.image || approved[0]?.image;
       return `
-        <button class="category-tile" type="button" data-category-jump="${escapeHtml(name)}">
-          <img src="${escapeHtml(safeImage(art))}" alt="" loading="lazy" decoding="async" />
-          <strong>${escapeHtml(name)}</strong>
-          <span>${escapeHtml(desc)}</span>
-          <span class="cat-arrow" aria-hidden="true">→</span>
+        <button class="category-circle" type="button" data-category-jump="${escapeHtml(name)}">
+          <span class="category-circle__img">
+            <img src="${escapeHtml(safeImage(art))}" alt="" loading="lazy" decoding="async" />
+          </span>
+          <em>${escapeHtml(name)}</em>
         </button>`;
     })
-    .join("");
-}
-
-function renderHomeCollections() {
-  const collections = [
-    { key: "budget", eyebrow: "Smart spend", title: "Under Rs 2,000", sub: "Steals below two grand", img: "./assets/listing-blue-top.png" },
-    { key: "merlot", eyebrow: "Signature", title: "Merlot mood", sub: "Deep reds & wine tones", img: "./assets/listing-merlot-blouse.png" },
-    { key: "neutral", eyebrow: "Quiet luxury", title: "Old-money neutrals", sub: "Cream, linen & camel", img: "./assets/listing-cardigan-flats.png" },
-  ];
-  dom.homeCollections.innerHTML = collections
-    .map(
-      (c) => `
-      <button class="collection-card" type="button" data-collection="${c.key}">
-        <img src="${c.img}" alt="${escapeHtml(c.title)} collection" loading="lazy" decoding="async" />
-        <p class="eyebrow">${escapeHtml(c.eyebrow)}</p>
-        <strong>${escapeHtml(c.title)}</strong>
-        <span>${escapeHtml(c.sub)}</span>
-      </button>`,
-    )
     .join("");
 }
 
@@ -1027,31 +1002,54 @@ function renderClosetsPage() {
   `;
 }
 
-function renderHomeClosets() {
-  const sellers = state.accounts
-    .filter((account) => sellerApprovedListings(account.id).length > 0)
-    .sort((a, b) => closetSize(b) - closetSize(a))
-    .slice(0, 3);
-  dom.homeClosets.innerHTML = sellers.length ? sellers.map(closetCard).join("") : emptyMini("No closets yet");
+// Footer social links and the "Secure Wallet Pay" trust pill's subtitle are
+// both driven by server config rather than hardcoded, so neither can drift
+// into naming a channel that isn't actually live (see supportWhatsapp /
+// paymentOptions in applyBootstrap).
+function renderFooterSocial() {
+  const wa = document.getElementById("footer-whatsapp");
+  if (wa) {
+    if (supportWhatsapp) {
+      wa.href = `https://wa.me/${supportWhatsapp}`;
+      wa.hidden = false;
+    } else {
+      wa.hidden = true;
+    }
+  }
+
+  const ig = document.getElementById("footer-instagram");
+  if (ig) {
+    if (instagramHandle) {
+      ig.href = `https://instagram.com/${instagramHandle}`;
+      ig.hidden = false;
+    } else {
+      ig.hidden = true;
+    }
+  }
+
+  const methods = document.getElementById("trust-payment-methods");
+  if (methods) {
+    methods.textContent = paymentOptions.length
+      ? paymentOptions.map((option) => option.label).join(" & ")
+      : "Coming soon";
+  }
 }
 
-function renderHomeOutfits() {
-  const cells = [
-    { img: "./assets/bechdou-editorial-collage.png", cap: "Summer drop", cls: "tall wide" },
-    { img: "./assets/listing-blue-top.png", cap: "Powder blue", cls: "" },
-    { img: "./assets/listing-merlot-blouse.png", cap: "Merlot mood", cls: "" },
-    { img: "./assets/listing-cardigan-flats.png", cap: "Cream flats", cls: "" },
-    { img: "./assets/bechdou-editorial-collage.png", cap: "#BechdouFits", cls: "" },
-  ];
-  dom.homeOutfits.innerHTML = cells
-    .map(
-      (cell) => `
-      <figure class="${cell.cls}">
-        <img src="${cell.img}" alt="Community outfit — ${escapeHtml(cell.cap)}" loading="lazy" decoding="async" />
-        <figcaption>${escapeHtml(cell.cap)}</figcaption>
-      </figure>`,
-    )
-    .join("");
+// Hidden entirely until BECHDOU_INSTAGRAM_HANDLE is configured — no fake
+// social feed for an account that may not exist.
+function renderInstagramSection() {
+  const section = document.getElementById("instagram-section");
+  const link = document.getElementById("instagram-follow-link");
+  if (!section || !link) return;
+
+  if (!instagramHandle) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+  link.href = `https://instagram.com/${instagramHandle}`;
+  const label = document.getElementById("instagram-follow-label");
+  if (label) label.textContent = `Follow @${instagramHandle}`;
 }
 
 /* =====================================================================
@@ -1745,34 +1743,15 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const collectionEl = event.target.closest("[data-collection]");
-  if (collectionEl) {
-    const map = {
-      budget: { maxPrice: "2000" },
-      merlot: { search: "merlot" },
-      neutral: { search: "cream" },
-    };
-    applyBrowse(map[collectionEl.dataset.collection] || {});
-    return;
-  }
-
   const categoryJump = event.target.closest("[data-category-jump]");
   if (categoryJump) {
     applyBrowse({ category: categoryJump.dataset.categoryJump });
     return;
   }
 
-  // Footer links to a section that lives inside the Home panel — switch
-  // views first, since scrollIntoView cannot reach an element hidden by
-  // display:none on an inactive panel.
-  const jumpHome = event.target.closest("[data-jump-home]");
-  if (jumpHome) {
-    switchView("home");
-    requestAnimationFrame(() => {
-      document.getElementById(jumpHome.dataset.jumpHome)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return;
-  }
+  // Section-within-home jumps (How it works, FAQ) are handled by the
+  // [data-section-jump] listener in wire.js, which sequences correctly with
+  // switchView's own scroll-to-top instead of racing it.
 
   // Open quick view last, but never when an inner action button was clicked
   const quickviewEl = event.target.closest("[data-quickview]");

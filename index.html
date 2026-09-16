@@ -6,7 +6,7 @@
     <title>Bechdou — Pakistan's fashion resale marketplace</title>
     <meta
       name="description"
-      content="Buy and sell preloved fashion across Pakistan. JazzCash, EasyPaisa, and bank transfer, verified seller closets, and buyer protection — Bechdou is Pakistan's community resale marketplace."
+      content="Buy and sell preloved fashion across Pakistan. Secure wallet payments, verified seller closets, and buyer protection — Bechdou is Pakistan's community resale marketplace."
     />
     <meta name="theme-color" content="#6e0f1f" />
     <meta name="format-detection" content="telephone=no" />
@@ -37,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=34" />
+    <link rel="stylesheet" href="./styles.css?v=36" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -163,36 +163,23 @@
             <!-- FEATURED CLOSET OF THE MONTH -->
             <section class="featured-band reveal" id="featured-band" aria-label="Featured closet"></section>
 
-            <!-- TRUST STRIP -->
-            <ul class="trust-strip" id="trust-strip" aria-label="Why shop with Bechdou">
-              <li class="trust-pill">
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
-                <div><strong>Verified Closets</strong><span>Trusted sellers</span></div>
-              </li>
-              <li class="trust-pill">
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 3 4.5h6l-9 13.5L3 7.5h6L12 3Z"/><path d="M9 7.5h6"/></svg>
-                <div><strong>Quality Pieces</strong><span>Checked with care</span></div>
-              </li>
-              <li class="trust-pill">
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
-                <div><strong>Buyer Protection</strong><span>Shop securely</span></div>
-              </li>
-              <li class="trust-pill">
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg>
-                <div><strong>Nationwide Delivery</strong><span>Across Pakistan</span></div>
-              </li>
-              <li class="trust-pill">
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 14h4"/></svg>
-                <div><strong>Secure Wallet Pay</strong><span>JazzCash &amp; EasyPaisa</span></div>
-              </li>
-            </ul>
+            <!-- SHOP BY CATEGORY -->
+            <section class="home-section reveal" aria-labelledby="cat-h">
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Find your aisle</p>
+                  <h2 id="cat-h">Shop by category</h2>
+                </div>
+              </div>
+              <div class="category-circles" id="home-categories"></div>
+            </section>
 
-            <!-- TRENDING DROPS -->
+            <!-- TRENDING THIS WEEK -->
             <section class="home-section reveal" aria-labelledby="trending-h">
               <div class="home-section__head">
                 <div>
                   <p class="eyebrow">Just dropped</p>
-                  <h2 id="trending-h">Trending drops</h2>
+                  <h2 id="trending-h">Trending this week</h2>
                 </div>
                 <button class="link-button" type="button" data-view-target="browse">
                   View all
@@ -202,56 +189,40 @@
               <div class="carousel" id="home-trending" role="list" aria-busy="true"></div>
             </section>
 
-            <!-- SHOP BY CATEGORY -->
-            <section class="home-section reveal" aria-labelledby="cat-h">
+            <!-- WHY SHOP WITH BECHDOU -->
+            <section class="home-section reveal" aria-labelledby="trust-h">
               <div class="home-section__head">
                 <div>
-                  <p class="eyebrow">Find your aisle</p>
-                  <h2 id="cat-h">Shop by category</h2>
+                  <p class="eyebrow">Why shop with Bechdou</p>
+                  <h2 id="trust-h">Built for trust, not just traffic</h2>
                 </div>
               </div>
-              <div class="category-tiles" id="home-categories"></div>
-            </section>
-
-            <!-- CURATED COLLECTIONS -->
-            <section class="home-section reveal" aria-labelledby="coll-h">
-              <div class="home-section__head">
-                <div>
-                  <p class="eyebrow">Editor's edit</p>
-                  <h2 id="coll-h">Curated collections</h2>
-                </div>
-              </div>
-              <div class="collection-grid" id="home-collections"></div>
-            </section>
-
-            <!-- FEATURED CLOSETS -->
-            <section class="home-section reveal" aria-labelledby="closets-h">
-              <div class="home-section__head">
-                <div>
-                  <p class="eyebrow">Community</p>
-                  <h2 id="closets-h">Featured seller closets</h2>
-                </div>
-                <button class="link-button" type="button" data-view-target="closets">
-                  Explore all
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
-              </div>
-              <div class="closet-row" id="home-closets"></div>
-            </section>
-
-            <!-- STYLE ICON PICKS -->
-            <section class="home-section reveal" aria-labelledby="staff-h">
-              <div class="home-section__head">
-                <div>
-                  <p class="eyebrow">Style icon picks</p>
-                  <h2 id="staff-h">Best below retail</h2>
-                </div>
-                <button class="link-button" type="button" data-view-target="browse">
-                  View all
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
-              </div>
-              <div class="carousel" id="home-staff" role="list" aria-busy="true"></div>
+              <ul class="trust-strip" id="trust-strip" aria-label="Why shop with Bechdou">
+                <li class="trust-pill">
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+                  <div><strong>Verified Closets</strong><span>Trusted sellers</span></div>
+                </li>
+                <li class="trust-pill">
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 3 4.5h6l-9 13.5L3 7.5h6L12 3Z"/><path d="M9 7.5h6"/></svg>
+                  <div><strong>Quality Pieces</strong><span>Checked with care</span></div>
+                </li>
+                <li class="trust-pill">
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                  <div><strong>Buyer Protection</strong><span>Shop securely</span></div>
+                </li>
+                <li class="trust-pill">
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg>
+                  <div><strong>Nationwide Delivery</strong><span>Across Pakistan</span></div>
+                </li>
+                <li class="trust-pill">
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><path d="M6 14h4"/></svg>
+                  <!-- Subtitle is filled in by JS from the payment methods that
+                       are actually configured (see renderPaymentTrustPill in
+                       script.js) — never hardcode a wallet name here, or it
+                       drifts from reality the moment a method is toggled. -->
+                  <div><strong>Secure Wallet Pay</strong><span id="trust-payment-methods">—</span></div>
+                </li>
+              </ul>
             </section>
 
             <!-- HOW IT WORKS -->
@@ -262,37 +233,58 @@
                   <h2 id="how-h">How Bechdou works</h2>
                 </div>
               </div>
-              <ol class="how-steps">
-                <li class="how-step">
-                  <span class="how-step__num">1</span>
-                  <h3>Discover &amp; save</h3>
-                  <p>Browse verified closets, heart your favourites, and filter by city, size and budget.</p>
-                </li>
-                <li class="how-step">
-                  <span class="how-step__num">2</span>
-                  <h3>Request &amp; chat</h3>
-                  <p>Tap a piece to request checkout or message the seller on WhatsApp to confirm fit.</p>
-                </li>
-                <li class="how-step">
-                  <span class="how-step__num">3</span>
-                  <h3>Pay Bechdou, then relax</h3>
-                  <p>Send payment via JazzCash, EasyPaisa, or bank transfer — we confirm it, QC the piece, and dispatch.</p>
-                </li>
-              </ol>
-              <p class="how-note">
-                <strong>JazzCash · EasyPaisa · Bank transfer</strong> — dispatched nationwide via TCS &amp; Leopards · Easy cancellations before dispatch
-              </p>
-            </section>
-
-            <!-- FEATURED OUTFITS -->
-            <section class="home-section reveal" aria-labelledby="fits-h">
-              <div class="home-section__head">
-                <div>
-                  <p class="eyebrow">#BechdouFits</p>
-                  <h2 id="fits-h">Featured outfits</h2>
+              <div class="how-columns">
+                <div class="how-panel">
+                  <h3>For buyers</h3>
+                  <div class="how-mini-grid">
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                      <strong>Browse</strong>
+                      <span>Explore closets and pieces</span>
+                    </div>
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
+                      <strong>Pay securely</strong>
+                      <span>Send via JazzCash, we confirm it</span>
+                    </div>
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg>
+                      <strong>Seller ships</strong>
+                      <span>QC'd, then dispatched to you</span>
+                    </div>
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                      <strong>Receive</strong>
+                      <span>Track it under My Orders</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="how-panel">
+                  <h3>For sellers</h3>
+                  <div class="how-mini-grid">
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                      <strong>Create closet</strong>
+                      <span>One click, totally free</span>
+                    </div>
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M8 16h5"/></svg>
+                      <strong>List items</strong>
+                      <span>Photos, details, price</span>
+                    </div>
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                      <strong>Get orders</strong>
+                      <span>We tell you when it sells</span>
+                    </div>
+                    <div class="how-mini">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 .8 3 2c0 3-6 1.5-6 4.5 0 1.2 1.3 2 3 2s3-1.1 3-2.5"/></svg>
+                      <strong>Get paid</strong>
+                      <span>80% of every sale, straight to you</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="fits-collage" id="home-outfits"></div>
             </section>
 
             <!-- TESTIMONIALS -->
@@ -334,7 +326,7 @@
               <div class="faq-list">
                 <details class="faq-item">
                   <summary>How do I pay?<span class="faq-mark" aria-hidden="true"></span></summary>
-                  <p>Send your payment via JazzCash, EasyPaisa, or bank transfer directly to Bechdou, then share the transaction ID at checkout. We confirm it, QC the piece, and dispatch nationwide through TCS and Leopards.</p>
+                  <p>Send your payment directly to Bechdou using one of the wallet or bank options shown at checkout, then share the transaction ID. We confirm it, QC the piece, and dispatch nationwide.</p>
                 </details>
                 <details class="faq-item">
                   <summary>How do I know a seller is genuine?<span class="faq-mark" aria-hidden="true"></span></summary>
@@ -351,16 +343,54 @@
               </div>
             </section>
 
-            <!-- CTA BAND -->
+            <!-- SELL CTA BAND -->
             <section class="home-cta reveal" aria-label="Start selling on Bechdou">
-              <div class="home-cta__inner">
-                <p class="script-label small">Your closet</p>
-                <h2>Start your closet in minutes.</h2>
-                <p class="home-cta__sub">Turn the pieces you've outgrown into cash. List free, reach buyers nationwide, get paid straight to your JazzCash or bank account.</p>
-                <div class="hero-actions">
-                  <button class="button primary lg" type="button" data-view-target="sell">Start selling</button>
-                  <button class="button secondary lg" type="button" data-view-target="browse">Keep shopping</button>
+              <div class="home-cta__text">
+                <p class="script-label">Your wardrobe deserves another chapter.</p>
+                <h2>List your first item today and join a community that loves fashion as much as you do.</h2>
+                <button class="button primary lg caps" type="button" data-view-target="sell">Start selling</button>
+              </div>
+              <div class="home-cta__media" aria-hidden="true">
+                <img src="./assets/listing-cardigan-flats.png" alt="" loading="lazy" decoding="async" />
+              </div>
+            </section>
+
+            <!-- STYLE INSPIRATION / INSTAGRAM -->
+            <!-- Hidden entirely until BECHDOU_INSTAGRAM_HANDLE is set on the
+                 server (see renderInstagramSection in script.js). The grid
+                 below is Bechdou's own product photography, not a live feed —
+                 the caption says so rather than implying these exact images
+                 are posted there. -->
+            <section class="home-section instagram-section reveal" id="instagram-section" aria-labelledby="insta-h" hidden>
+              <div class="home-section__head">
+                <div>
+                  <p class="eyebrow">Style inspiration</p>
+                  <h2 id="insta-h">Follow the closet</h2>
                 </div>
+                <a class="link-button" id="instagram-follow-link" href="#" target="_blank" rel="noopener">
+                  <span id="instagram-follow-label">Follow on Instagram</span>
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </a>
+              </div>
+              <div class="instagram-grid">
+                <figure><img src="./assets/bechdou-editorial-collage.png" alt="" loading="lazy" decoding="async" /></figure>
+                <figure><img src="./assets/listing-blue-top.png" alt="" loading="lazy" decoding="async" /></figure>
+                <figure><img src="./assets/listing-merlot-blouse.png" alt="" loading="lazy" decoding="async" /></figure>
+                <figure><img src="./assets/listing-cardigan-flats.png" alt="" loading="lazy" decoding="async" /></figure>
+              </div>
+            </section>
+
+            <!-- NEWSLETTER -->
+            <section class="home-cta home-cta--newsletter reveal" aria-labelledby="newsletter-h">
+              <div class="home-cta__text">
+                <p class="script-label">Be the first to know.</p>
+                <h2 id="newsletter-h">New drops, closet features and style tips — straight to your inbox.</h2>
+                <form class="newsletter-form" id="newsletter-form" novalidate>
+                  <label class="sr-only" for="newsletter-email">Email address</label>
+                  <input id="newsletter-email" name="email" type="email" placeholder="Enter your email" required autocomplete="email" />
+                  <button class="button primary" type="submit">Subscribe</button>
+                </form>
+                <p class="newsletter-note" id="newsletter-note" aria-live="polite"></p>
               </div>
             </section>
 
@@ -368,16 +398,16 @@
             <footer class="site-footer">
               <div class="site-footer__brand">
                 <p class="script-label small">Bechdou.pk</p>
-                <p>Pakistan's community marketplace for preloved fashion. Buy, sell, and restyle — pay by JazzCash, EasyPaisa, or bank transfer, nationwide.</p>
+                <p>Pakistan's community marketplace for preloved fashion — buy, sell, and restyle, nationwide.</p>
+                <!-- hrefs are set by renderFooterSocial() in script.js from
+                     server config; a link with no configured destination is
+                     hidden rather than pointing at a placeholder number. -->
                 <div class="footer-social" aria-label="Bechdou social links">
-                  <a class="footer-social__link" href="https://wa.me/923000000000" target="_blank" rel="noopener" aria-label="WhatsApp">
+                  <a class="footer-social__link" id="footer-whatsapp" href="#" target="_blank" rel="noopener" aria-label="WhatsApp" hidden>
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.2-.8-2.7-1.1-4.4-3.9-4.5-4-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.2.2-.4.4-.2.7s.7 1.2 1.5 1.9c1 .9 1.8 1.1 2.1 1.3.2.1.4.1.6-.1l.7-.9c.2-.3.4-.2.6-.1l1.9.9c.2.1.4.2.5.3.1.2.1.7-.1 1.2Z"/></svg>
                   </a>
-                  <a class="footer-social__link" href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram">
+                  <a class="footer-social__link" id="footer-instagram" href="#" target="_blank" rel="noopener" aria-label="Instagram" hidden>
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
-                  </a>
-                  <a class="footer-social__link" href="https://tiktok.com" target="_blank" rel="noopener" aria-label="TikTok">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M16 3c.3 2.1 1.5 3.6 3.6 3.8v2.7c-1.3.1-2.5-.3-3.6-1v5.8a5.6 5.6 0 1 1-5.6-5.6c.3 0 .6 0 .9.1v2.8a2.8 2.8 0 1 0 1.9 2.7V3H16Z"/></svg>
                   </a>
                 </div>
               </div>
@@ -387,7 +417,7 @@
                   <button class="footer-link" type="button" data-view-target="browse">Browse all</button>
                   <button class="footer-link" type="button" data-view-target="closets">Seller closets</button>
                   <button class="footer-link" type="button" data-category-jump="Tops">Tops</button>
-                  <button class="footer-link" type="button" data-category-jump="Outerwear">Outerwear</button>
+                  <button class="footer-link" type="button" data-category-jump="Dresses">Dresses</button>
                   <button class="footer-link" type="button" data-category-jump="Shoes">Shoes</button>
                 </div>
                 <div>
@@ -398,21 +428,32 @@
                 </div>
                 <div>
                   <h3>Support</h3>
-                  <button class="footer-link" type="button" data-jump-home="how-h">How it works</button>
+                  <button class="footer-link" type="button" data-section-jump="how-h">How it works</button>
                   <button class="footer-link" type="button" data-view-target="buyer-protection">Buyer protection</button>
                   <button class="footer-link" type="button" data-view-target="shipping-delivery">Shipping &amp; delivery</button>
-                  <button class="footer-link" type="button" data-jump-home="faq-h">FAQ</button>
+                  <button class="footer-link" type="button" data-section-jump="faq-h">FAQ</button>
                   <button class="footer-link" type="button" data-view-target="contact">Contact us</button>
                 </div>
                 <div>
                   <h3>Company</h3>
                   <button class="footer-link" type="button" data-view-target="about">About Bechdou</button>
-                  <a class="footer-link" href="https://wa.me/923000000000" target="_blank" rel="noopener">WhatsApp us</a>
                   <button class="footer-link" type="button" data-view-target="terms">Terms &amp; conditions</button>
                   <button class="footer-link" type="button" data-view-target="privacy">Privacy policy</button>
                 </div>
+                <div class="site-footer__newsletter">
+                  <h3>Stay in the loop</h3>
+                  <p>Get style edits, new drops, and closet highlights.</p>
+                  <form class="newsletter-form newsletter-form--footer" id="newsletter-form-footer" novalidate>
+                    <label class="sr-only" for="newsletter-email-footer">Email address</label>
+                    <input id="newsletter-email-footer" name="email" type="email" placeholder="Your email" required autocomplete="email" />
+                    <button class="button primary sm" type="submit" aria-label="Subscribe">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </button>
+                  </form>
+                  <p class="newsletter-note" id="newsletter-note-footer" aria-live="polite"></p>
+                </div>
               </nav>
-              <p class="site-footer__legal">© 2026 Bechdou · Pakistan's fashion resale marketplace · JazzCash · EasyPaisa · Bank transfer</p>
+              <p class="site-footer__legal">© 2026 Bechdou · Pakistan's fashion resale marketplace</p>
             </footer>
           </section>
 
@@ -436,7 +477,10 @@
             <div class="chip-row" aria-label="Categories">
               <button class="chip is-active" type="button" data-category="all">All</button>
               <button class="chip" type="button" data-category="Tops">Tops</button>
+              <button class="chip" type="button" data-category="Dresses">Dresses</button>
+              <button class="chip" type="button" data-category="Denim">Denim</button>
               <button class="chip" type="button" data-category="Outerwear">Outerwear</button>
+              <button class="chip" type="button" data-category="Bags">Bags</button>
               <button class="chip" type="button" data-category="Shoes">Shoes</button>
               <button class="chip" type="button" data-category="Accessories">Accessories</button>
             </div>
@@ -518,7 +562,10 @@
                     Category
                     <select id="listing-category" name="category">
                       <option>Tops</option>
+                      <option>Dresses</option>
+                      <option>Denim</option>
                       <option>Outerwear</option>
+                      <option>Bags</option>
                       <option>Shoes</option>
                       <option>Accessories</option>
                     </select>
@@ -720,12 +767,12 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./api.js?v=34"></script>
-    <script src="./pages.js?v=34"></script>
-    <script src="./pages-account.js?v=34"></script>
-    <script src="./admin.js?v=34"></script>
-    <script src="./script.js?v=34"></script>
-    <script src="./seller.js?v=34"></script>
-    <script src="./wire.js?v=34"></script>
+    <script src="./api.js?v=36"></script>
+    <script src="./pages.js?v=36"></script>
+    <script src="./pages-account.js?v=36"></script>
+    <script src="./admin.js?v=36"></script>
+    <script src="./script.js?v=36"></script>
+    <script src="./seller.js?v=36"></script>
+    <script src="./wire.js?v=36"></script>
   </body>
 </html>

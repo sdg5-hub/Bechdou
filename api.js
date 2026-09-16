@@ -82,5 +82,7 @@ const API = (() => {
     suspendAccount: (id, suspended) => request("POST", `/accounts/${id}/suspend`, { suspended }),
 
     reset: () => request("POST", "/reset"),
+
+    subscribeNewsletter: (email) => request("POST", "/newsletter", { email }),
   };
 })();

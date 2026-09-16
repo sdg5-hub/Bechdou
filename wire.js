@@ -86,8 +86,6 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
-  // Nav entries that point at a section of the home page (e.g. FAQ) rather
-  // than a view of their own.
   // Nav entries that point at a section of the home page (e.g. FAQ).
   const sectionJump = event.target.closest("[data-section-jump]");
   if (sectionJump) {
@@ -117,6 +115,32 @@ document.addEventListener("click", async (event) => {
     setTimeout(() => dom.searchInput?.focus(), 320);
     return;
   }
+});
+
+/* ---------- Newsletter signup (main section + footer mini-form) ---------- */
+document.addEventListener("submit", async (event) => {
+  const form = event.target.closest("#newsletter-form, #newsletter-form-footer");
+  if (!form) return;
+  event.preventDefault();
+
+  const isFooter = form.id === "newsletter-form-footer";
+  const note = document.getElementById(isFooter ? "newsletter-note-footer" : "newsletter-note");
+  const email = new FormData(form).get("email");
+  const button = form.querySelector("button[type=submit]");
+
+  button.disabled = true;
+  try {
+    const result = await API.subscribeNewsletter(email);
+    if (note) {
+      note.textContent = result.alreadySubscribed
+        ? "You're already on the list."
+        : "You're on the list — welcome!";
+    }
+    form.reset();
+  } catch (error) {
+    if (note) note.textContent = error.message;
+  }
+  button.disabled = false;
 });
 
 /* ---------- Post-login redirects ---------- */
