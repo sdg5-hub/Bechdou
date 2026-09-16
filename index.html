@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Bechdou — Pakistan's fashion resale marketplace</title>
+    <title>Bechdou, Pakistan's fashion resale marketplace</title>
     <meta
       name="description"
-      content="Buy and sell preloved fashion across Pakistan. Secure wallet payments, verified seller closets, and buyer protection — Bechdou is Pakistan's community resale marketplace."
+      content="Buy and sell preloved fashion across Pakistan. Secure wallet payments, verified seller closets, and buyer protection. Bechdou is Pakistan's community resale marketplace."
     />
     <meta name="theme-color" content="#6e0f1f" />
     <meta name="format-detection" content="telephone=no" />
@@ -23,7 +23,7 @@
     <!-- Open Graph / social -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Bechdou" />
-    <meta property="og:title" content="Bechdou — Pakistan's fashion resale marketplace" />
+    <meta property="og:title" content="Bechdou, Pakistan's fashion resale marketplace" />
     <meta
       property="og:description"
       content="Preloved fashion, verified closets, secure wallet payments across Pakistan."
@@ -37,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=36" />
+    <link rel="stylesheet" href="./styles.css?v=37" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -125,7 +125,7 @@
                   <span class="hero-title__line">Your style.</span>
                   <span class="hero-title__line is-powder">Your story.</span>
                 </h1>
-                <p class="script-label hero-script reveal">— New closets. New possibilities.</p>
+                <p class="script-label hero-script reveal">New closets. New possibilities.</p>
                 <p class="hero-sub reveal">
                   A trusted community to buy and sell pre-loved fashion
                   from verified closets across Pakistan.
@@ -145,9 +145,9 @@
                   <span>Add <strong>Bechdou</strong> to your Homescreen</span>
                 </button>
                 <dl class="hero-stats reveal" aria-label="Marketplace at a glance">
-                  <div><dt id="hero-stat-items">—</dt><dd>pieces live</dd></div>
-                  <div><dt id="hero-stat-closets">—</dt><dd>seller closets</dd></div>
-                  <div><dt id="hero-stat-cities">—</dt><dd>cities</dd></div>
+                  <div><dt id="hero-stat-items">0</dt><dd>pieces live</dd></div>
+                  <div><dt id="hero-stat-closets">0</dt><dd>seller closets</dd></div>
+                  <div><dt id="hero-stat-cities">0</dt><dd>cities</dd></div>
                 </dl>
               </div>
               <div class="home-hero__media reveal" aria-hidden="true">
@@ -220,7 +220,7 @@
                        are actually configured (see renderPaymentTrustPill in
                        script.js) — never hardcode a wallet name here, or it
                        drifts from reality the moment a method is toggled. -->
-                  <div><strong>Secure Wallet Pay</strong><span id="trust-payment-methods">—</span></div>
+                  <div><strong>Secure Wallet Pay</strong><span id="trust-payment-methods"></span></div>
                 </li>
               </ul>
             </section>
@@ -310,7 +310,7 @@
                 </figure>
                 <figure class="quote-card promise-card">
                   <blockquote>Sellers keep 80% of every sale. Listing is free.</blockquote>
-                  <figcaption><span>Our 20% covers moderation, quality checks and support — and you see the exact split on every order.</span></figcaption>
+                  <figcaption><span>Our 20% covers moderation, quality checks and support, and you see the exact split on every order.</span></figcaption>
                 </figure>
               </div>
             </section>
@@ -334,11 +334,11 @@
                 </details>
                 <details class="faq-item">
                   <summary>Can I sell my own clothes?<span class="faq-mark" aria-hidden="true"></span></summary>
-                  <p>Absolutely. Tap <em>Sell your fit</em>, upload a few photos, set your price, and submit for approval — it's free to list.</p>
+                  <p>Absolutely. Tap <em>Sell your fit</em>, upload a few photos, set your price, and submit for approval. It's free to list.</p>
                 </details>
                 <details class="faq-item">
                   <summary>What if the item isn't as described?<span class="faq-mark" aria-hidden="true"></span></summary>
-                  <p>Every order is QC-checked before it is dispatched, and you can cancel yourself — free — any time before it ships. After that, message us and we will step in before the seller's payout is released.</p>
+                  <p>Every order is QC-checked before it is dispatched, and you can cancel yourself, free, any time before it ships. After that, message us and we will step in before the seller's payout is released.</p>
                 </details>
               </div>
             </section>
@@ -384,7 +384,7 @@
             <section class="home-cta home-cta--newsletter reveal" aria-labelledby="newsletter-h">
               <div class="home-cta__text">
                 <p class="script-label">Be the first to know.</p>
-                <h2 id="newsletter-h">New drops, closet features and style tips — straight to your inbox.</h2>
+                <h2 id="newsletter-h">New drops, closet features and style tips, straight to your inbox.</h2>
                 <form class="newsletter-form" id="newsletter-form" novalidate>
                   <label class="sr-only" for="newsletter-email">Email address</label>
                   <input id="newsletter-email" name="email" type="email" placeholder="Enter your email" required autocomplete="email" />
@@ -398,7 +398,7 @@
             <footer class="site-footer">
               <div class="site-footer__brand">
                 <p class="script-label small">Bechdou.pk</p>
-                <p>Pakistan's community marketplace for preloved fashion — buy, sell, and restyle, nationwide.</p>
+                <p>Pakistan's community marketplace for preloved fashion. Buy, sell, and restyle, nationwide.</p>
                 <!-- hrefs are set by renderFooterSocial() in script.js from
                      server config; a link with no configured destination is
                      hidden rather than pointing at a placeholder number. -->
@@ -767,12 +767,12 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./api.js?v=36"></script>
-    <script src="./pages.js?v=36"></script>
-    <script src="./pages-account.js?v=36"></script>
-    <script src="./admin.js?v=36"></script>
-    <script src="./script.js?v=36"></script>
-    <script src="./seller.js?v=36"></script>
-    <script src="./wire.js?v=36"></script>
+    <script src="./api.js?v=37"></script>
+    <script src="./pages.js?v=37"></script>
+    <script src="./pages-account.js?v=37"></script>
+    <script src="./admin.js?v=37"></script>
+    <script src="./script.js?v=37"></script>
+    <script src="./seller.js?v=37"></script>
+    <script src="./wire.js?v=37"></script>
   </body>
 </html>

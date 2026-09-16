@@ -277,7 +277,7 @@ function renderResetPage() {
       await refresh();
       window.history.replaceState(null, "", location.pathname);
       switchView("home");
-      showToast("Password updated — you're logged in.");
+      showToast("Password updated. You're logged in.");
     } catch (error) {
       alertBox.innerHTML = pageAlert(error.message);
       submitState(form, false);
@@ -296,8 +296,8 @@ function renderVerifyNoticePage(email, emailSent) {
         <h1>Check your inbox</h1>
         <p>
           We sent a link to <strong>${esc(email)}</strong>. Click it to finish
-          creating your account — nothing is created until you do.
-          ${emailSent === false ? "<br /><em>Email delivery is not configured on this server yet — the link was written to the server log.</em>" : ""}
+          creating your account. Nothing is created until you do.
+          ${emailSent === false ? "<br /><em>Email delivery is not configured on this server yet. The link was written to the server log.</em>" : ""}
         </p>
         <div class="status-actions">
           <button class="button secondary" type="button" id="resend-verification">Resend email</button>
@@ -399,7 +399,7 @@ const STATIC_PAGES = {
       for something preloved, verified, and priced fairly.</p>
       <p>Every closet on Bechdou is reviewed before it goes live, and every listing is
       checked for photos and honest condition notes before buyers can request it.
-      We're a small, early team — if something looks off or you have an idea for us,
+      We're a small, early team. If something looks off or you have an idea for us,
       tell us. <button class="link-inline" type="button" data-view-target="contact">Get in touch</button>.</p>
     `,
   },
@@ -409,16 +409,16 @@ const STATIC_PAGES = {
     body: `
       <h2>How buyers pay</h2>
       <p>Bechdou does not use a card gateway. When you check out, you send the full
-      amount directly to one of Bechdou's own accounts — JazzCash, EasyPaisa, or bank
-      transfer — and enter the transaction ID at checkout. An admin confirms the
+      amount directly to one of Bechdou's own accounts using the wallet or bank
+      option shown at checkout, then enter the transaction ID. An admin confirms the
       payment landed, then your piece is QC'd and dispatched.</p>
       <h2>How sellers get paid</h2>
       <p>Bechdou keeps a 20% commission on every completed sale to run the platform,
       moderate listings, and handle quality checks. The remaining 80% is sent to the
-      seller once the sale is confirmed — sellers can see this breakdown on every order.</p>
+      seller once the sale is confirmed. Sellers can see this breakdown on every order.</p>
       <h2>Why not pay the seller directly?</h2>
       <p>Routing payment through Bechdou first is what makes buyer protection and QC
-      possible — if a piece doesn't pass inspection, the sale can be unwound before
+      possible. If a piece doesn't pass inspection, the sale can be unwound before
       any money reaches the seller.</p>
     `,
   },
@@ -430,7 +430,7 @@ const STATIC_PAGES = {
       misrepresented, tell us before you confirm delivery and we'll step in.</p>
       <h2>Cancelling an order</h2>
       <p>You can cancel any order yourself, free, any time before it's marked
-      dispatched — find it under <button class="link-inline" type="button" data-view-target="orders">My orders</button>.
+      dispatched. Find it under <button class="link-inline" type="button" data-view-target="orders">My orders</button>.
       Once an order ships, cancellations go through Bechdou support instead.</p>
       <h2>Payment safety</h2>
       <p>Your payment goes to Bechdou, not directly to a stranger's personal wallet.
@@ -443,7 +443,7 @@ const STATIC_PAGES = {
     body: `
       <p>Once your payment is confirmed, sellers dispatch through standard courier
       services nationwide. Delivery timing depends on the seller's city and the
-      courier's own schedule — your order page always shows the current status.</p>
+      courier's own schedule. Your order page always shows the current status.</p>
       <h2>Tracking your order</h2>
       <p>Check <button class="link-inline" type="button" data-view-target="orders">My orders</button>
       any time for live status: requested, payment confirmed, QC passed, dispatched, delivered.</p>
@@ -458,7 +458,7 @@ const STATIC_PAGES = {
       <h2>What gets approved fastest</h2>
       <ul>
         <li>Clear front, back, and label photos in good light</li>
-        <li>An honest condition note — mention marks, pulls, or repairs</li>
+        <li>An honest condition note, mentioning marks, pulls, or repairs</li>
         <li>Accurate measurements, not just a size label</li>
         <li>A fair price relative to the item's retail value and condition</li>
       </ul>
@@ -484,7 +484,7 @@ const STATIC_PAGES = {
       ].filter(Boolean).join(" ");
 
       return `
-        <p>Message us and a real person will reply — we are a small team and we
+        <p>Message us and a real person will reply. We are a small team and we
         read everything.</p>
         ${channels
           ? `<p class="contact-actions">${channels}</p>`
@@ -501,7 +501,7 @@ const STATIC_PAGES = {
     title: "Terms & Conditions",
     body: `
       <p class="static-page-notice">Bechdou is an early-stage marketplace. This page
-      is a placeholder outline, not a lawyer-reviewed legal document — it should be
+      is a placeholder outline, not a lawyer-reviewed legal document. It should be
       replaced with real terms before Bechdou takes on the public at scale.</p>
       <p>By using Bechdou, buyers and sellers agree to deal honestly: sellers list
       items they genuinely own and describe accurately; buyers pay only through the
@@ -515,12 +515,12 @@ const STATIC_PAGES = {
     title: "Privacy Policy",
     body: `
       <p class="static-page-notice">Bechdou is an early-stage marketplace. This page
-      is a placeholder outline, not a lawyer-reviewed legal document — it should be
+      is a placeholder outline, not a lawyer-reviewed legal document. It should be
       replaced with a real privacy policy before Bechdou takes on the public at scale.</p>
       <p>Bechdou stores the account, listing, and order information needed to run
       the marketplace: your name, email, phone, delivery address, and order history.
       We do not sell this information to third parties. Payment is handled manually
-      by Bechdou admins reviewing the transaction reference you provide — Bechdou
+      by Bechdou admins reviewing the transaction reference you provide. Bechdou
       does not store card numbers, since no card gateway is used.</p>
     `,
   },

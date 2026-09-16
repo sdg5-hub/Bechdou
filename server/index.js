@@ -103,6 +103,17 @@ const DEMO_DATA_ENABLED = process.env.BECHDOU_DEMO === "1" || process.env.BECHDO
   : !IS_PRODUCTION && !process.env.BECHDOU_ADMIN_EMAIL;
 
 function bootstrapData() {
+  // Seed BEFORE ensuring the operator's admin account. seedIfEmpty() only
+  // seeds when the accounts table has zero rows — if ensureAdminAccount ran
+  // first it would create that first row itself, so on every boot with both
+  // BECHDOU_ADMIN_EMAIL and BECHDOU_DEMO set, the table would never look
+  // empty and the demo content would silently never appear.
+  if (DEMO_DATA_ENABLED) {
+    if (seedIfEmpty() && IS_PRODUCTION) {
+      console.warn("[bechdou] WARNING: demo data seeded on a production server (BECHDOU_DEMO is on).");
+    }
+  }
+
   const adminEmail = process.env.BECHDOU_ADMIN_EMAIL;
   const adminPassword = process.env.BECHDOU_ADMIN_PASSWORD;
 
@@ -118,12 +129,6 @@ function bootstrapData() {
       "[bechdou] No BECHDOU_ADMIN_EMAIL / BECHDOU_ADMIN_PASSWORD set — this server has no admin account.\n" +
       "          Set both and restart, or you will not be able to open the admin dashboard.",
     );
-  }
-
-  if (DEMO_DATA_ENABLED) {
-    if (seedIfEmpty() && IS_PRODUCTION) {
-      console.warn("[bechdou] WARNING: demo data seeded on a production server (BECHDOU_DEMO is on).");
-    }
   }
 }
 

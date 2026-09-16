@@ -105,7 +105,7 @@ function renderProfilePage() {
       resend.disabled = true;
       try {
         await API.resendVerification();
-        showToast("Verification email sent — check your inbox.");
+        showToast("Verification email sent. Check your inbox.");
       } catch (error) {
         showToast(error.message);
       }
@@ -365,8 +365,8 @@ function renderConfirmationPage(order, listing) {
         <h1>Order placed</h1>
         <p>
           Your order for <strong>${esc(listing?.title || "your piece")}</strong> is confirmed.
-          We are checking your <strong>${esc(money(order.amount))}</strong> ${esc(methodLabel)} payment —
-          your piece is QC'd and dispatched once it clears.
+          We are checking your <strong>${esc(money(order.amount))}</strong> ${esc(methodLabel)} payment.
+          Your piece is QC'd and dispatched once it clears.
         </p>
         <div class="confirmation-detail">
           <div><span>Order number</span><strong>${esc(order.id)}</strong></div>

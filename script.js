@@ -196,7 +196,7 @@ function soldCount(account) {
 
 function memberSince(account) {
   const date = new Date(account.createdAt);
-  return Number.isNaN(date.getTime()) ? "—" : String(date.getFullYear());
+  return Number.isNaN(date.getTime()) ? "N/A" : String(date.getFullYear());
 }
 
 // Questions about a piece go to Bechdou, not to the seller directly.
@@ -209,7 +209,7 @@ function memberSince(account) {
 function supportChatLink(listing) {
   if (!supportWhatsapp) return "";
   const text = encodeURIComponent(
-    `Hi Bechdou, I have a question about "${listing.title}" (${money(listing.price)}) — listing ${listing.id}.`,
+    `Hi Bechdou, I have a question about "${listing.title}" (${money(listing.price)}), listing ${listing.id}.`,
   );
   return `https://wa.me/${supportWhatsapp}?text=${text}`;
 }
@@ -591,7 +591,7 @@ function listingCard(listing) {
   return `
     <article class="listing-card" role="listitem">
       <div class="listing-media" data-quickview="${id}" role="button" tabindex="0" aria-label="Quick view ${escapeHtml(listing.title)}">
-        <img src="${escapeHtml(safeImage(listing.image))}" alt="${escapeHtml(listing.title)} — ${escapeHtml(listing.brand)} ${escapeHtml(listing.category)} in ${escapeHtml(listing.location || "Pakistan")}" loading="lazy" decoding="async" />
+        <img src="${escapeHtml(safeImage(listing.image))}" alt="${escapeHtml(listing.title)}, ${escapeHtml(listing.brand)} ${escapeHtml(listing.category)} in ${escapeHtml(listing.location || "Pakistan")}" loading="lazy" decoding="async" />
         <span class="badge">${escapeHtml(listing.category)}</span>
         <button
           class="save-button ${saved ? "is-saved" : ""}"
@@ -706,7 +706,7 @@ function renderSellerMetrics() {
 
   if (!allowed) {
     dom.sellerMetrics.innerHTML = account
-      ? `${metricCard("Seller access", "Not yet", "One click away — it's free")}`
+      ? `${metricCard("Seller access", "Not yet", "One click away, it's free")}`
       : `
         ${metricCard("Listing fee", "Free", "Open a closet in one click")}
         ${metricCard("You keep", `${100 - Math.round(COMMISSION_RATE * 100)}%`, "Sent once the sale clears")}
@@ -767,7 +767,7 @@ function renderSellerQueue() {
   dom.sellerRoleNote.innerHTML = sellerAllowed
     ? `<span class="status approved">Seller ready</span>`
     : account
-      ? `<button class="button primary sm" type="button" data-become-seller>Become a seller — it's free</button>`
+      ? `<button class="button primary sm" type="button" data-become-seller>Become a seller, it's free</button>`
       : `<span class="status pending">Seller login required</span>`;
 
   renderSellerMetrics();
@@ -834,7 +834,7 @@ function discountOf(listing) {
 }
 
 function emptyMini(message) {
-  return `<div class="empty-state"><h3>${escapeHtml(message)}</h3><p>Check back soon — new pieces drop daily.</p></div>`;
+  return `<div class="empty-state"><h3>${escapeHtml(message)}</h3><p>Check back soon. New pieces drop daily.</p></div>`;
 }
 
 function skeletonCards(count) {
@@ -1676,7 +1676,7 @@ function shareListing(listingId) {
   const listing = listingById(listingId);
   if (!listing) return;
   const url = location.href.split("#")[0];
-  const text = `${listing.title} — ${money(listing.price)} on Bechdou`;
+  const text = `${listing.title}, ${money(listing.price)} on Bechdou`;
   if (navigator.share) {
     navigator.share({ title: "Bechdou", text, url }).catch(() => {});
   } else {

@@ -1,15 +1,21 @@
 :root {
-  --cream: #f7f3ee;
-  --paper: #fffaf4;
-  --powder: #a2bcd7;
-  --powder-deep: #6f8fb0;
+  /* Deeper, warmer base than the original near-white cream — the flatter
+     tone read as plain white on screen instead of the warm editorial
+     backdrop in the brand reference. */
+  --cream: #f1e6d3;
+  --cream-deep: #e8d8bc;
+  --paper: #fdf8ee;
+  --powder: #93b3d6;
+  --powder-deep: #5f7fa3;
   --merlot: #6e0f1f;
   --merlot-soft: #8e3341;
+  --gold: #ab7d3f;
+  --gold-soft: rgba(171, 125, 63, 0.35);
   --ink: #231719;
   --muted: #6c5d58;
   --line: rgba(110, 15, 31, 0.18);
   --line-strong: rgba(110, 15, 31, 0.34);
-  --shadow: 0 18px 50px rgba(50, 30, 32, 0.12);
+  --shadow: 0 22px 56px rgba(40, 22, 20, 0.18);
   --radius: 8px;
 }
 
@@ -4956,4 +4962,164 @@ button.footer-link {
   .how-mini-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .instagram-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .newsletter-form { flex-direction: column; }
+}
+
+/* =====================================================================
+   LUXURY DEPTH PASS — warmer body wash, gold accent, richer color
+   coverage, deeper shadows. The palette itself (merlot / powder blue /
+   cream) is locked to the brand reference; this pass increases saturation,
+   contrast between sections, and adds a restrained gold accent (picked up
+   from the jewellery/hardware in the brand photography) rather than
+   introducing new brand colors.
+   ===================================================================== */
+
+body {
+  background:
+    radial-gradient(120% 90% at 15% -10%, rgba(147, 179, 214, 0.16), transparent 60%),
+    radial-gradient(120% 90% at 100% 0%, rgba(171, 125, 63, 0.1), transparent 55%),
+    var(--cream);
+}
+
+/* Give the header real presence instead of a near-invisible white bar. */
+.topbar {
+  background: rgba(253, 248, 238, 0.92);
+  border-color: var(--gold-soft);
+  box-shadow: 0 12px 32px rgba(40, 22, 20, 0.1);
+}
+
+.announce-bar {
+  background: linear-gradient(120deg, var(--powder-deep), var(--powder));
+}
+
+.announce-bar p {
+  color: var(--paper);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Gold hairline under the eyebrow label, used across section heads —
+   a quiet, recurring premium mark rather than a loud one. */
+.eyebrow {
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.eyebrow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 36px;
+  height: 2px;
+  background: var(--gold);
+}
+
+/* Color bands get a gradient instead of a flat fill, so they read as rich
+   fabric rather than a solid paint chip. */
+.featured-band {
+  background: linear-gradient(135deg, var(--powder) 0%, var(--powder-deep) 100%);
+}
+
+.home-cta {
+  background: linear-gradient(135deg, var(--powder) 0%, var(--powder-deep) 100%);
+}
+
+.home-cta__media {
+  box-shadow: 0 20px 50px rgba(20, 30, 45, 0.28);
+}
+
+/* "Why shop" and "How it works" get a visibly deeper panel instead of the
+   page background repeating for six sections in a row — that flatness was
+   the biggest single contributor to the page reading as plain and pale. */
+.home-section:has(#trust-strip),
+.home-section.how {
+  padding: clamp(28px, 4vw, 44px) clamp(20px, 4vw, 40px);
+  background: var(--cream-deep);
+  border-radius: 18px;
+}
+
+.trust-strip {
+  border-top-color: var(--gold-soft);
+  border-bottom-color: var(--gold-soft);
+}
+
+.trust-strip .trust-pill + .trust-pill {
+  border-left-color: var(--gold-soft);
+}
+
+.how-panel {
+  position: relative;
+  background: var(--paper);
+  border-color: var(--gold-soft);
+  box-shadow: 0 16px 40px rgba(40, 22, 20, 0.14);
+}
+
+.how-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--merlot), var(--gold));
+  border-radius: 0 0 3px 3px;
+}
+
+/* Category portraits get a gold ring instead of a plain line — a small,
+   consistent luxury cue that shows up six times on the homepage alone. */
+.category-circle__img {
+  border: 2px solid var(--gold-soft);
+}
+
+.category-circle:hover .category-circle__img {
+  border-color: var(--gold);
+}
+
+/* Promise cards read as generic text blocks without a focal mark — a large
+   quotation glyph gives them the same editorial weight as a real pull-quote. */
+.promise-card {
+  position: relative;
+  padding-top: 44px;
+}
+
+.promise-card::before {
+  content: "\201C";
+  position: absolute;
+  top: -6px;
+  left: 24px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--gold);
+  opacity: 0.7;
+}
+
+/* Buttons get a touch more depth on the primary action instead of a flat
+   fill — this is the button used for every real purchase and listing
+   action, so it is worth the extra weight. */
+.button.primary {
+  background: linear-gradient(160deg, var(--merlot-soft), var(--merlot));
+  box-shadow: 0 10px 24px rgba(110, 15, 31, 0.28);
+}
+
+.button.primary:hover {
+  box-shadow: 0 14px 32px rgba(110, 15, 31, 0.36);
+}
+
+.listing-card {
+  box-shadow: 0 14px 34px rgba(40, 22, 20, 0.12);
+}
+
+.listing-card:hover {
+  box-shadow: 0 22px 48px rgba(40, 22, 20, 0.2);
+}
+
+@supports not selector(:has(*)) {
+  /* Fallback for browsers without :has() support — the deeper panel still
+     applies to How It Works; the trust ribbon keeps the plain background
+     rather than being silently unstyled. */
+  #trust-strip {
+    padding: 20px;
+    background: var(--cream-deep);
+    border-radius: 18px;
+  }
 }

@@ -181,7 +181,7 @@ function adminOrdersTable() {
                   ${esc(order.id)} &middot; ${esc(order.deliveryAddress || "")} ${esc(order.deliveryCity || "")}
                 </span>
                 <span class="admin-row__meta admin-row__payment">
-                  Paid via <strong>${esc(methodLabel)}</strong> &middot; ref <strong>${esc(order.paymentReference || "—")}</strong>
+                  Paid via <strong>${esc(methodLabel)}</strong> &middot; ref <strong>${esc(order.paymentReference || "N/A")}</strong>
                 </span>
               </div>
               <div class="admin-row__side">
