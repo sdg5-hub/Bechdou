@@ -934,14 +934,25 @@ function renderFeaturedBand() {
 // sellers add categories.
 const HOME_CATEGORY_ORDER = ["Tops", "Dresses", "Denim", "Bags", "Shoes", "Accessories"];
 
+// Each category falls back to a photo that actually matches its name until
+// real listings exist in it — previously every empty category fell back to
+// whichever listing happened to be first overall, so five of six circles
+// often showed the identical photo regardless of what it was a photo of.
+const CATEGORY_FALLBACK_ART = {
+  Tops: "./assets/listing-blue-top.png",
+  Dresses: "./assets/category-dresses.jpg",
+  Denim: "./assets/category-denim.jpg",
+  Bags: "./assets/bechdou-editorial-collage.png",
+  Shoes: "./assets/category-shoes.jpg",
+  Accessories: "./assets/category-accessories.jpg",
+};
+
 function renderHomeCategories() {
   const approved = state.listings.filter((listing) => listing.status === "approved");
   dom.homeCategories.innerHTML = HOME_CATEGORY_ORDER
     .map((name) => {
       const inCat = approved.filter((listing) => listing.category === name);
-      // Show a real piece from the category where there is one, otherwise
-      // fall back to any live listing so the circle never renders bare.
-      const art = inCat[0]?.image || approved[0]?.image;
+      const art = inCat[0]?.image || CATEGORY_FALLBACK_ART[name];
       return `
         <button class="category-circle" type="button" data-category-jump="${escapeHtml(name)}">
           <span class="category-circle__img">

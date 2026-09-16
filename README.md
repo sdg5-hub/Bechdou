@@ -296,6 +296,15 @@ seller confirmed their email. If you add marketing copy, keep it to things
 the product actually does — the FAQ and Buyer Protection pages describe the
 real prepaid flow, not a cash-on-delivery one.
 
+### A note on imagery
+
+Every photo under `assets/` is either an original brand asset or sourced from
+[Pexels](https://www.pexels.com) under their free license (commercial use
+permitted, no attribution required). None are real Bechdou seller photos —
+they're placeholders until your own sellers upload real listing photos, at
+which point the seeded/fallback images stop appearing for that category
+automatically (see `CATEGORY_FALLBACK_ART` in `script.js`).
+
 ---
 
 ## 📝 Notes & next steps
