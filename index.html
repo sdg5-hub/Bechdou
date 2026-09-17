@@ -37,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Pinion+Script&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=38" />
+    <link rel="stylesheet" href="./styles.css?v=39" />
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -167,6 +167,7 @@
             <section class="home-section reveal" aria-labelledby="cat-h">
               <div class="home-section__head">
                 <div>
+                  <span class="section-index" aria-hidden="true">01</span>
                   <p class="eyebrow">Find your aisle</p>
                   <h2 id="cat-h">Shop by category</h2>
                 </div>
@@ -193,6 +194,7 @@
             <section class="home-section reveal" aria-labelledby="trust-h">
               <div class="home-section__head">
                 <div>
+                  <span class="section-index" aria-hidden="true">02</span>
                   <p class="eyebrow">Why shop with Bechdou</p>
                   <h2 id="trust-h">Built for trust, not just traffic</h2>
                 </div>
@@ -229,6 +231,7 @@
             <section class="home-section how reveal" aria-labelledby="how-h">
               <div class="home-section__head center">
                 <div>
+                  <span class="section-index" aria-hidden="true">03</span>
                   <p class="eyebrow">Simple &amp; safe</p>
                   <h2 id="how-h">How Bechdou works</h2>
                 </div>
@@ -236,53 +239,21 @@
               <div class="how-columns">
                 <div class="how-panel">
                   <h3>For buyers</h3>
-                  <div class="how-mini-grid">
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                      <strong>Browse</strong>
-                      <span>Explore closets and pieces</span>
-                    </div>
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
-                      <strong>Pay securely</strong>
-                      <span>Send via JazzCash, we confirm it</span>
-                    </div>
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.7"/><circle cx="17.5" cy="18" r="1.7"/></svg>
-                      <strong>Seller ships</strong>
-                      <span>QC'd, then dispatched to you</span>
-                    </div>
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                      <strong>Receive</strong>
-                      <span>Track it under My Orders</span>
-                    </div>
-                  </div>
+                  <ol class="how-list">
+                    <li><span class="how-list__num">01</span><div><strong>Browse</strong><span>Explore closets and pieces</span></div></li>
+                    <li><span class="how-list__num">02</span><div><strong>Pay securely</strong><span>Send via JazzCash, we confirm it</span></div></li>
+                    <li><span class="how-list__num">03</span><div><strong>Seller ships</strong><span>QC'd, then dispatched to you</span></div></li>
+                    <li><span class="how-list__num">04</span><div><strong>Receive</strong><span>Track it under My Orders</span></div></li>
+                  </ol>
                 </div>
                 <div class="how-panel">
                   <h3>For sellers</h3>
-                  <div class="how-mini-grid">
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                      <strong>Create closet</strong>
-                      <span>One click, totally free</span>
-                    </div>
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M8 16h5"/></svg>
-                      <strong>List items</strong>
-                      <span>Photos, details, price</span>
-                    </div>
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>
-                      <strong>Get orders</strong>
-                      <span>We tell you when it sells</span>
-                    </div>
-                    <div class="how-mini">
-                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 .8 3 2c0 3-6 1.5-6 4.5 0 1.2 1.3 2 3 2s3-1.1 3-2.5"/></svg>
-                      <strong>Get paid</strong>
-                      <span>80% of every sale, straight to you</span>
-                    </div>
-                  </div>
+                  <ol class="how-list">
+                    <li><span class="how-list__num">01</span><div><strong>Create closet</strong><span>One click, totally free</span></div></li>
+                    <li><span class="how-list__num">02</span><div><strong>List items</strong><span>Photos, details, price</span></div></li>
+                    <li><span class="how-list__num">03</span><div><strong>Get orders</strong><span>We tell you when it sells</span></div></li>
+                    <li><span class="how-list__num">04</span><div><strong>Get paid</strong><span>80% of every sale, straight to you</span></div></li>
+                  </ol>
                 </div>
               </div>
             </section>
@@ -767,12 +738,12 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./api.js?v=38"></script>
-    <script src="./pages.js?v=38"></script>
-    <script src="./pages-account.js?v=38"></script>
-    <script src="./admin.js?v=38"></script>
-    <script src="./script.js?v=38"></script>
-    <script src="./seller.js?v=38"></script>
-    <script src="./wire.js?v=38"></script>
+    <script src="./api.js?v=39"></script>
+    <script src="./pages.js?v=39"></script>
+    <script src="./pages-account.js?v=39"></script>
+    <script src="./admin.js?v=39"></script>
+    <script src="./script.js?v=39"></script>
+    <script src="./seller.js?v=39"></script>
+    <script src="./wire.js?v=39"></script>
   </body>
 </html>
